@@ -12,7 +12,7 @@ This is a simple CoAP broker implemented in Python using the [`aiocoap`](https:/
 
 Install the required Python packages:
 
-```
+```sh
 pip install aiocoap
 ```
 
@@ -20,7 +20,7 @@ pip install aiocoap
 
 Run the CoAP broker (I recommend `hupper` if you are developing in python):
 
-```
+```sh
 hupper -m broker
 ```
 
@@ -30,7 +30,7 @@ The broker will start listening on 127.0.0.1:5683.
 
 Any client can create a topic as "admin":
 
-```
+```sh
 ./aiocoap-client -m POST coap://127.0.0.1:5683/ps --payload "{\"topic_name\": \"Room Temperature Sensor\", \"resource_type\": \"core.ps.conf\", \"media_type\": \"application/json\", \"target_attribute\": \"temperature\", \"expiration_date\": \"2023-04-05T23:59:59Z\", \"max_subscribers\": 100}"
 ```
 
@@ -40,7 +40,7 @@ The broker will create the resource paths for both the topic and topic_data reso
 
 Discover topics either via `.well-known/core` or by querying the collection resource `ps`.
 
-```
+```sh
 ./aiocoap-client -m GET coap://127.0.0.1/.well-known/core
 ./aiocoap-client -m GET coap://127.0.0.1/ps
 ```
@@ -49,7 +49,7 @@ Discover topics either via `.well-known/core` or by querying the collection reso
 
 A CoAP client can act as publisher by sending a CoAP PUT to a topic_data resource. This initializes the resource into [FULLY CREATED](https://www.ietf.org/archive/id/draft-ietf-core-coap-pubsub-12.html#name-topic-lifecycle-2) state:
 
-```
+```sh
 /aiocoap-client -m PUT coap://127.0.0.1:5683/ps/data/225acdd --payload "{"n": "temperature","u": "Cel","t": 1621452122,"v": 21.3}"
 ```
 
@@ -57,7 +57,7 @@ A CoAP client can act as publisher by sending a CoAP PUT to a topic_data resourc
 
 Subscribe to a topic by using CoAP Observe:
 
-```
+```sh
 ./aiocoap-client -m GET --observe coap://127.0.0.1/ps/data/225acdd
 ```
 ## Resource Classes
