@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 
 # aiocoap is implemented by Christian Amsüss <c.amsuess@energyharvesting.at>
-# This simple broker is implemented by Jaime Jiménez. It is a CoAP server that creates and manages resources for storing data by implementing various Resource classes provided by aiocoap. The script implements https://datatracker.ietf.org/doc/html/draft-ietf-core-coap-pubsub-12
+# This simple broker script is implemented by Jaime Jiménez, it implements
+# https://datatracker.ietf.org/doc/html/draft-ietf-core-coap-pubsub-12
 
 import datetime
 import logging
