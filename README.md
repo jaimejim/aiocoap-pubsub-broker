@@ -1,10 +1,11 @@
 # aiocoap-pubsub-broker
 
-This is a simple CoAP broker implemented in Python using the aiocoap library. The broker creates and manages resources for storing data by implementing various Resource classes provided by aiocoap. The script follows publish-subscribe architecture for the Constrained Application Protocol (CoAP) defined at [draft-ietf-core-coap-pubsub](https://datatracker.ietf.org/doc/draft-ietf-core-coap-pubsub/).
+This is a simple CoAP broker implemented in Python using the [`aiocoap`](https://github.com/chrysn/aiocoap) library. The broker creates and manages resources for storing data by implementing various Resource classes provided by aiocoap. The script follows publish-subscribe architecture for the Constrained Application Protocol (CoAP) defined at [draft-ietf-core-coap-pubsub](https://datatracker.ietf.org/doc/draft-ietf-core-coap-pubsub/).
 
 ## Requirements
-Python 3.7 or higher
-aiocoap library
+
+- Python 3.7 or higher
+- `aiocoap` library
 
 
 ## Installation
