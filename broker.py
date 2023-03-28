@@ -185,51 +185,6 @@ class TopicDataResource(resource.ObservableResource):
         else:
             return aiocoap.Message(payload=self.content)
 
-# Define a resource class for temperature data
-class TemperatureResource(resource.ObservableResource):
-
-    # Constructor method
-    def __init__(self):
-        super().__init__()
-        self.handle = None
-        self.content = b''
-
-    # Method for setting content of the resource
-    def set_content(self, content):
-        self.content = content
-
-    # Method for notifying observers
-    def notify(self):
-        self.updated_state()
-        self.reschedule()
-
-    # Method for rescheduling the observer notification
-    def reschedule(self):
-        self.handle = asyncio.get_event_loop().call_later(5, self.notify)
-
-    # Method for updating the observation count
-    def update_observation_count(self, count):
-        if count and self.handle is None:
-            print("Starting observation")
-            self.reschedule()
-        if count == 0 and self.handle:
-            print("Stopping observation")
-            self.handle.cancel()
-            self.handle = None
-
-    # Method for handling PUT requests
-    async def render_put(self, request):
-        print('PUT payload: %s' % request.payload)
-        self.set_content(request.payload)
-        return aiocoap.Message(code=aiocoap.CHANGED, payload=self.content)
-
-    # Method for handling GET requests
-    async def render_get(self, request):
-        if not self.content:
-            return aiocoap.Message(code=aiocoap.NOT_FOUND)
-        else:
-            return aiocoap.Message(payload=self.content)
-
 # Configure logging levels for the application
 logging.basicConfig(level=logging.INFO)
 logging.getLogger("coap-server").setLevel(logging.DEBUG)
