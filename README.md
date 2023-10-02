@@ -41,19 +41,14 @@ The broker will create the resource paths for both the topic and topic_data reso
 Discover topics either via `.well-known/core` or by querying the collection resource `ps`.
 
 ```sh
-./aiocoap-client -m GET coap://127.0.0.1/.well-known/core
 ./aiocoap-client -m GET coap://127.0.0.1/ps
-```
-
-The responses will contain the path to the topic_data resource.
-
-```sh
 <ps/225acdd>;rt="core.ps.conf"
 ```
 
 or
 
 ```sh
+./aiocoap-client -m GET coap://127.0.0.1/.well-known/core
 application/link-format content was re-formatted
 </.well-known/core>; ct=40,
 </ps>; rt=core.ps.coll,
@@ -90,6 +85,7 @@ The broker implements the following resource classes:
 - Discovery
   - [x] GET /.well-known/core to discover collection
     - [ ] Use core.ps rt
+    - [ ] Topic discovery
     - [x] GET topic to discover topic configuration
     - [x] GET /ps to retrieve all topics
     - [ ] Use core.ps.conf rt
