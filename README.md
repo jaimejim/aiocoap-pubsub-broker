@@ -45,12 +45,29 @@ Discover topics either via `.well-known/core` or by querying the collection reso
 ./aiocoap-client -m GET coap://127.0.0.1/ps
 ```
 
+The responses will contain the path to the topic_data resource.
+
+```sh
+<ps/225acdd>;rt="core.ps.conf"
+```
+
+or
+
+```sh
+application/link-format content was re-formatted
+</.well-known/core>; ct=40,
+</ps>; rt=core.ps.coll,
+</ps/b5a15f>; ct=application/link-format; rt=core.ps.conf; obs,
+</ps/data/255acdd>; rt=core.ps.data; obs,
+<https://christian.amsuess.com/tools/aiocoap/#version-0.4.4.post0>; rel=impl-info
+```
+
 ### Publish
 
 A CoAP client can act as publisher by sending a CoAP PUT to a topic_data resource. This initializes the resource into [FULLY CREATED](https://www.ietf.org/archive/id/draft-ietf-core-coap-pubsub-12.html#name-topic-lifecycle-2) state:
 
 ```sh
-/aiocoap-client -m PUT coap://127.0.0.1:5683/ps/data/225acdd --payload "{"n": "temperature","u": "Cel","t": 1621452122,"v": 21.3}"
+./aiocoap-client -m PUT coap://127.0.0.1:5683/ps/data/225acdd --payload "{"n": "temperature","u": "Cel","t": 1621452122,"v": 21.3}"
 ```
 
 ### Subscribe
