@@ -61,9 +61,9 @@ class CollectionResource(resource.Resource):
 
         # Create a JSON object for the topic configuration resource
         topic_config_json = {
-            "topic_name": data["topic_name"],
-            "topic_data": topic_data_path,
-            "resource_type": "core.ps.conf"
+            "topic-name": data["topic-name"],
+            "topic-data": topic_data_path,
+            "resource-type": "core.ps.conf"
         }
 
         # Add the topic configuration and topic data resources to the root resource object
@@ -80,7 +80,7 @@ class CollectionResource(resource.Resource):
         # Create the response message
         json_payload_bytes = json.dumps(topic_config_json).encode('utf-8')
         response = aiocoap.Message(code=aiocoap.CREATED, payload=json_payload_bytes)
-        response.opt.location_path = topic_config_path
+        response.opt.location_path = topic_config_path.split('/')
         response.opt.content_format = aiocoap.numbers.media_types_rev["application/json"]
 
         return response

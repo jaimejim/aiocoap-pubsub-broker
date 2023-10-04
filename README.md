@@ -28,41 +28,67 @@ The broker will start listening on 127.0.0.1:5683.
 
 ### Create Topic
 
-Any client can create a topic as "admin":
+Any client can create a topic-configuration as "admin":
 
 ```sh
-./aiocoap-client -m POST coap://127.0.0.1:5683/ps --payload "{\"topic_name\": \"Room Temperature Sensor\", \"resource_type\": \"core.ps.conf\", \"media_type\": \"application/json\", \"target_attribute\": \"temperature\", \"expiration_date\": \"2023-04-05T23:59:59Z\", \"max_subscribers\": 100}"
+❯ ./aiocoap-client -m POST coap://127.0.0.1:5683/ps --payload "{\"topic-name\": \"Room Temperature Sensor\", \"resource-type\": \"core.ps.conf\", \"media-type\": \"application/json\", \"target-attribute\": \"temperature\", \"expiration-date\": \"2023-04-05T23:59:59Z\", \"max-subscribers\": 100}"
+Response arrived from different address; base URI is coap://127.0.0.1/ps
+Location options indicate new resource: /ps/4fb3de
+JSON re-formated and indented
+{
+    "topic-name": "Room Temperature Sensor",
+    "topic-data": "ps/data/a08b18d",
+    "resource-type": "core.ps.conf"
+}
 ```
 
-The broker will create the resource paths for both the topic and topic_data resources. 
+The broker will create the resource paths for both the topic-configuration and topic-data resources.
 
 ### Discover
 
 Discover topics either via `.well-known/core` or by querying the collection resource `ps`.
 
+You may discover the following resource types:
+- `core.ps.coll` - the topic collection resource: `</ps>; rt=core.ps.coll`
+- `core.ps.conf` - the topic-configuration resource: `<ps/4f17f5>;rt=core.ps.conf`
+- `core.ps.data` - the topic-data resource: `</ps/data/82e63cd>; rt=core.ps.data`
+
 ```sh
-./aiocoap-client -m GET coap://127.0.0.1/ps
-<ps/225acdd>;rt="core.ps.conf"
+❯ ./aiocoap-client -m GET coap://127.0.0.1/ps
+<ps/4fb3de>;rt="core.ps.conf"
 ```
 
 or
 
 ```sh
-./aiocoap-client -m GET coap://127.0.0.1/.well-known/core
+❯ ./aiocoap-client -m GET coap://127.0.0.1/.well-known/core
 application/link-format content was re-formatted
 </.well-known/core>; ct=40,
 </ps>; rt=core.ps.coll,
-</ps/b5a15f>; ct=application/link-format; rt=core.ps.conf; obs,
-</ps/data/255acdd>; rt=core.ps.data; obs,
+</ps/4fb3de>; ct=application/link-format; rt=core.ps.conf; obs,
+</ps/data/a08b18d>; rt=core.ps.data; obs,
 <https://christian.amsuess.com/tools/aiocoap/#version-0.4.4.post0>; rel=impl-info
 ```
 
-### Publish
+### Retrieve a topic-configuration
 
-A CoAP client can act as publisher by sending a CoAP PUT to a topic_data resource. This initializes the resource into [FULLY CREATED](https://www.ietf.org/archive/id/draft-ietf-core-coap-pubsub-12.html#name-topic-lifecycle-2) state:
+Any topic-configuration can be retrieved via its corresponding URI.
 
 ```sh
-./aiocoap-client -m PUT coap://127.0.0.1:5683/ps/data/225acdd --payload "{"n": "temperature","u": "Cel","t": 1621452122,"v": 21.3}"
+❯ ./aiocoap-client -m GET coap://127.0.0.1/ps/4fb3de
+{"topic-name": "Room Temperature Sensor", "topic-data": "ps/data/a08b18d", "resource-type": "core.ps.conf"}
+```
+
+From it, the associated topic-data can be interacted with providing it is FULLY created. For that a publisher needs to publish.
+
+### Publish
+
+A CoAP client can act as publisher by sending a CoAP PUT to a topic-data resource. This initializes the resource into [FULLY CREATED](https://www.ietf.org/archive/id/draft-ietf-core-coap-pubsub-12.html#name-topic-lifecycle-2) state:
+
+```sh
+❯ ./aiocoap-client -m PUT coap://127.0.0.1:5683/ps/data/a08b18d --payload "{"n": "temperature","u": "Cel","t": 1621452122,"v": 21.3}"
+Response arrived from different address; base URI is coap://127.0.0.1/ps/data/a08b18d
+{n: temperature,u: Cel,t: 1621452122,v: 21.3}
 ```
 
 ### Subscribe
@@ -70,15 +96,19 @@ A CoAP client can act as publisher by sending a CoAP PUT to a topic_data resourc
 Subscribe to a topic by using CoAP Observe:
 
 ```sh
-./aiocoap-client -m GET --observe coap://127.0.0.1/ps/data/225acdd
+❯ ./aiocoap-client -m GET --observe coap://127.0.0.1:5683/ps/data/a08b18d
+Response arrived from different address; base URI is coap://127.0.0.1/ps/data/a08b18d
+{n: temperature,u: Cel,t: 1621452122,v: 21.3}
+---
+{n: temperature,u: Cel,t: 1621452122,v: 21.3}
 ```
 ## Resource Classes
 
 The broker implements the following resource classes:
 
 - CollectionResource: The collection resource `/ps` for storing topics.
-- TopicResource: A resource for [topic configurations](https://www.ietf.org/archive/id/draft-ietf-core-coap-pubsub-12.html#name-topic-properties-2).
-- TopicDataResource: A resource for topic data and for the [publish-subscribe interactions](https://www.ietf.org/archive/id/draft-ietf-core-coap-pubsub-12.html#name-topic-data-interactions-2) over CoAP.
+- TopicResource: A resource for [topic-configurations](https://www.ietf.org/archive/id/draft-ietf-core-coap-pubsub-12.html#name-topic-properties-2).
+- TopicDataResource: A resource for topic-data and for the [publish-subscribe interactions](https://www.ietf.org/archive/id/draft-ietf-core-coap-pubsub-12.html#name-topic-data-interactions-2) over CoAP.
 
 ## Supported operations
 
@@ -93,11 +123,14 @@ The broker implements the following resource classes:
 - Configuration
     - [x] POST topic to create topic
     - [x] PUT topic to configure topic
+    - [ ] Client defined topic-data url
     - [ ] DELETE topic to delete topic
 - Topic Data
-    - [x] PUT on topic_data to publish
-    - [x] GET + observe on topic_data to Subscribe
-    - [x] GET on topic_data to get last measurement
-    - [ ] Delete to delete topic_data
+    - [x] PUT on topic-data to publish
+    - [x] GET + observe on topic-data to Subscribe
+    - [x] GET on topic-data to get last measurement
+    - [ ] Delete to delete topic-data
+- Other
+    - [ ] Improve Broker Logic
 
 Disclaimer: There is lots of hardcoded stuff, as this was quickly developed during the IETF116 hackathon.
