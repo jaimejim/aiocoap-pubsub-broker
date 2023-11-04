@@ -53,31 +53,31 @@ class CollectionResource(resource.Resource):
         print('POST payload: %s' % request.payload)
         data = json.loads(request.payload)
 
-        # Create resources for topic configuration and topic data
         topic_config_path = f'ps/{secrets.token_hex(3)}'
         topic_data_path = f'ps/data/{secrets.token_hex(3)}d'
         config_path_segments = topic_config_path.split('/')
         data_path_segments = topic_data_path.split('/')
 
-        # Create a JSON object for the topic configuration resource
         topic_config_json = {
             "topic-name": data["topic-name"],
             "topic-data": topic_data_path,
-            "resource-type": "core.ps.conf"
+            "resource-type": "core.ps.conf",
+            "media-type": data.get("media-type", None), # default is None if not provided
+            "topic-type": data.get("topic-type", None), # default is None if not provided
+            "expiration-date": data.get("expiration-date", None), # default is None if not provided
+            "max-subscribers": data.get("max-subscribers", None), # default is None if not provided
+            "observer-check": data.get("observer-check", 86400) # default is 86400 if not provided
         }
 
-        # Add the topic configuration and topic data resources to the root resource object
         self.root.add_resource(config_path_segments, TopicResource(topic_config_json))
         self.root.add_resource(data_path_segments, TopicDataResource())
 
-        # Add a link to the new topic configuration resource to the content of this collection resource
         new_link = f'<{topic_config_path}>;rt="core.ps.conf"'
         if self.content:
             self.content += ',' + new_link
         else:
             self.content = new_link
 
-        # Create the response message
         json_payload_bytes = json.dumps(topic_config_json).encode('utf-8')
         response = aiocoap.Message(code=aiocoap.CREATED, payload=json_payload_bytes)
         response.opt.location_path = topic_config_path.split('/')
@@ -91,15 +91,12 @@ class CollectionResource(resource.Resource):
 
 # Define a resource class for topic configurations
 class TopicResource(resource.ObservableResource):
-
-    # Constructor method
+    
     def __init__(self, content):
         super().__init__()
         self.handle = None
         self.content = json.dumps(content).encode('utf-8')
-
-        # Set the content type and resource type attributes
-        self.ct = "application/link-format"
+        self.ct = content.get('media-type', 'application/link-format') # default is 'application/link-format' if not provided
         self.rt = "core.ps.conf"
 
     # Method for setting content of the resource

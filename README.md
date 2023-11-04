@@ -113,8 +113,10 @@ The broker implements the following resource classes:
 
 - Discovery
   - [x] GET /.well-known/core to discover collection
+    - [ ] multicast
     - [ ] Use core.ps rt
     - [ ] Topic discovery
+    - [x] Update to current list of Topic Properties on draft
     - [x] GET topic to discover topic configuration
     - [x] GET /ps to retrieve all topics
     - [ ] Use core.ps.conf rt
