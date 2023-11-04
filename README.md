@@ -48,9 +48,9 @@ The broker will create the resource paths for both the topic-configuration and t
 Discover topics either via `.well-known/core` or by querying the collection resource `ps`.
 
 You may discover the following resource types:
-- `core.ps.coll` - the topic collection resource: `</ps>; rt=core.ps.coll`
-- `core.ps.conf` - the topic-configuration resource: `<ps/4f17f5>;rt=core.ps.conf`
-- `core.ps.data` - the topic-data resource: `</ps/data/82e63cd>; rt=core.ps.data`
+- `core.ps.coll` - the topic collection resource.
+- `core.ps.conf` - the topic-configuration resource.
+- `core.ps.data` - the topic-data resource.
 
 ```sh
 ❯ ./client.py -m GET coap://127.0.0.1/ps
@@ -67,6 +67,23 @@ application/link-format content was re-formatted
 </ps/4fb3de>; ct=application/link-format; rt=core.ps.conf; obs,
 </ps/data/a08b18d>; rt=core.ps.data; obs,
 <https://christian.amsuess.com/tools/aiocoap/#version-0.4.4.post0>; rel=impl-info
+```
+
+or by `rt`
+
+```sh
+./client.py -m GET 'coap://127.0.0.1/.well-known/core?rt=core.ps.conf'
+application/link-format content was re-formatted
+</ps/dd4494>; ct=None; rt=core.ps.conf; obs,
+</ps/cdc49a>; ct=application/json; rt=core.ps.conf; obs
+```
+
+or
+
+```sh
+❯ ./client.py -m GET 'coap://127.0.0.1/.well-known/core?rt=core.ps.coll'
+application/link-format content was re-formatted
+</ps>; rt=core.ps.coll
 ```
 
 ### Retrieve a topic-configuration
@@ -113,14 +130,13 @@ The broker implements the following resource classes:
 
 - Discovery
   - [x] GET /.well-known/core to discover collection
-    - [ ] multicast
-    - [ ] Use core.ps rt
-    - [ ] Topic discovery
+    - [x] Well known discovery with rt
+    - [x] Topic Collection discovery
     - [x] Update to current list of Topic Properties on draft
     - [x] GET topic to discover topic configuration
     - [x] GET /ps to retrieve all topics
-    - [ ] Use core.ps.conf rt
-    - [ ] Use FETCH
+    - [ ] FETCH
+    - [ ] multicast
 - Configuration
     - [x] POST topic to create topic
     - [x] PUT topic to configure topic
