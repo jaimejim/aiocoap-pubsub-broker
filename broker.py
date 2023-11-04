@@ -50,9 +50,20 @@ class CollectionResource(resource.Resource):
             print("Stopping observation")
             self.handle.cancel()
             self.handle = None
+    
     def get_topic_resources(self):
         """Return a dictionary of TopicResource instances in the site."""
         return {path: resource for path, resource in self.root._resources.items() if isinstance(resource, TopicResource)}
+
+    def remove_resource(self, path):
+        link = f'<{path}>;rt="core.ps.conf"'
+        self.content = self.content.replace(link, '')
+        if ',,' in self.content:
+            self.content = self.content.replace(',,', ',')
+        if self.content.startswith(','):
+            self.content = self.content[1:]
+        if self.content.endswith(','):
+            self.content = self.content[:-1]
 
     # Method for handling POST requests
     async def render_post(self, request):
@@ -75,7 +86,7 @@ class CollectionResource(resource.Resource):
             "observer-check": data.get("observer-check", 86400) # default is 86400 if not provided
         }
 
-        self.root.add_resource(config_path_segments, TopicResource(topic_config_json))
+        self.root.add_resource(config_path_segments, TopicResource(topic_config_json, self.root, config_path_segments))
         self.root.add_resource(data_path_segments, TopicDataResource())
 
         new_link = f'<{topic_config_path}>;rt="core.ps.conf"'
@@ -140,12 +151,14 @@ class CollectionResource(resource.Resource):
 # Define a resource class for topic configurations
 class TopicResource(resource.ObservableResource):
 
-    def __init__(self, content):
+    def __init__(self, content, site, path):
         super().__init__()
         self.handle = None
         self.content = json.dumps(content).encode('utf-8')
         self.ct = content.get('media-type', 'application/link-format') # default is 'application/link-format' if not provided
         self.rt = "core.ps.conf"
+        self.site = site
+        self.path = path
     
     def matches(self, filter):
         # Load the content of the resource as a JSON object
@@ -233,9 +246,19 @@ class TopicResource(resource.ObservableResource):
         # Remove this resource from the site
         self.site.remove_resource(self.path)
 
+        # Decode the bytes to a string and then convert it to a dictionary
+        content_dict = json.loads(self.content.decode('utf-8'))
+
         # Remove the associated topic-data resource from the site
-        topic_data_path = self.content['topic-data'].split('/')
+        topic_data_path = content_dict['topic-data'].split('/')
         self.site.remove_resource(topic_data_path)
+        # Update the CollectionResource
+        collection_resource = self.site._resources['ps',]
+        collection_resource.remove_resource("/".join(self.path))
+
+        # Unsubscribe all subscribers by removing them from the list of observers
+        for observer in self._observations:
+            observer.deregister("Resource not found", aiocoap.NOT_FOUND)
 
         # Return a 2.02 Deleted response
         return aiocoap.Message(code=aiocoap.DELETED)

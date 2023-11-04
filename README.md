@@ -166,7 +166,7 @@ The broker implements the following resource classes:
     - [x] Update to current list of Topic Properties on draft
     - [x] GET topic to discover topic configuration
     - [x] GET /ps to retrieve all topics
-    - [ ] FETCH
+    - [x] FETCH
     - [ ] multicast
 - Configuration
     - [x] POST topic to create topic
