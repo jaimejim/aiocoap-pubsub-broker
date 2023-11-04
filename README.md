@@ -7,7 +7,6 @@ This is a simple CoAP broker implemented in Python using the [`aiocoap`](https:/
 - Python 3.7 or higher
 - `aiocoap` library
 
-
 ## Installation
 
 Install the required Python packages:
@@ -31,7 +30,7 @@ The broker will start listening on 127.0.0.1:5683.
 Any client can create a topic-configuration as "admin":
 
 ```sh
-❯ ./aiocoap-client -m POST coap://127.0.0.1:5683/ps --payload "{\"topic-name\": \"Room Temperature Sensor\", \"resource-type\": \"core.ps.conf\", \"media-type\": \"application/json\", \"target-attribute\": \"temperature\", \"expiration-date\": \"2023-04-05T23:59:59Z\", \"max-subscribers\": 100}"
+❯ ./client.py -m POST coap://127.0.0.1:5683/ps --payload "{\"topic-name\": \"Room Temperature Sensor\", \"resource-type\": \"core.ps.conf\", \"media-type\": \"application/json\", \"target-attribute\": \"temperature\", \"expiration-date\": \"2023-04-05T23:59:59Z\", \"max-subscribers\": 100}"
 Response arrived from different address; base URI is coap://127.0.0.1/ps
 Location options indicate new resource: /ps/4fb3de
 JSON re-formated and indented
@@ -54,14 +53,14 @@ You may discover the following resource types:
 - `core.ps.data` - the topic-data resource: `</ps/data/82e63cd>; rt=core.ps.data`
 
 ```sh
-❯ ./aiocoap-client -m GET coap://127.0.0.1/ps
+❯ ./client.py -m GET coap://127.0.0.1/ps
 <ps/4fb3de>;rt="core.ps.conf"
 ```
 
 or
 
 ```sh
-❯ ./aiocoap-client -m GET coap://127.0.0.1/.well-known/core
+❯ ./client.py -m GET coap://127.0.0.1/.well-known/core
 application/link-format content was re-formatted
 </.well-known/core>; ct=40,
 </ps>; rt=core.ps.coll,
@@ -75,7 +74,7 @@ application/link-format content was re-formatted
 Any topic-configuration can be retrieved via its corresponding URI.
 
 ```sh
-❯ ./aiocoap-client -m GET coap://127.0.0.1/ps/4fb3de
+❯ ./client.py -m GET coap://127.0.0.1/ps/4fb3de
 {"topic-name": "Room Temperature Sensor", "topic-data": "ps/data/a08b18d", "resource-type": "core.ps.conf"}
 ```
 
@@ -86,7 +85,7 @@ From it, the associated topic-data can be interacted with providing it is FULLY 
 A CoAP client can act as publisher by sending a CoAP PUT to a topic-data resource. This initializes the resource into [FULLY CREATED](https://www.ietf.org/archive/id/draft-ietf-core-coap-pubsub-12.html#name-topic-lifecycle-2) state:
 
 ```sh
-❯ ./aiocoap-client -m PUT coap://127.0.0.1:5683/ps/data/a08b18d --payload "{"n": "temperature","u": "Cel","t": 1621452122,"v": 21.3}"
+❯ ./client.py -m PUT coap://127.0.0.1:5683/ps/data/a08b18d --payload "{"n": "temperature","u": "Cel","t": 1621452122,"v": 21.3}"
 Response arrived from different address; base URI is coap://127.0.0.1/ps/data/a08b18d
 {n: temperature,u: Cel,t: 1621452122,v: 21.3}
 ```
@@ -96,7 +95,7 @@ Response arrived from different address; base URI is coap://127.0.0.1/ps/data/a0
 Subscribe to a topic by using CoAP Observe:
 
 ```sh
-❯ ./aiocoap-client -m GET --observe coap://127.0.0.1:5683/ps/data/a08b18d
+❯ ./client.py -m GET --observe coap://127.0.0.1:5683/ps/data/a08b18d
 Response arrived from different address; base URI is coap://127.0.0.1/ps/data/a08b18d
 {n: temperature,u: Cel,t: 1621452122,v: 21.3}
 ---
@@ -133,4 +132,4 @@ The broker implements the following resource classes:
 - Other
     - [ ] Improve Broker Logic
 
-Disclaimer: There is lots of hardcoded stuff, as this was quickly developed during the IETF116 hackathon.
+Disclaimer: There is lots of hardcoded stuff, as this was quickly developed during the IETF116 nad IETF118 hackathons.
