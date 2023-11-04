@@ -139,7 +139,7 @@ The broker implements the following resource classes:
     - [ ] multicast
 - Configuration
     - [x] POST topic to create topic
-    - [x] PUT topic to configure topic
+    - [x] PUT to update topic configuration
     - [ ] Client defined topic-data url
     - [ ] DELETE topic to delete topic
 - Topic Data

@@ -91,7 +91,7 @@ class CollectionResource(resource.Resource):
 
 # Define a resource class for topic configurations
 class TopicResource(resource.ObservableResource):
-    
+
     def __init__(self, content):
         super().__init__()
         self.handle = None
@@ -122,6 +122,37 @@ class TopicResource(resource.ObservableResource):
             self.handle.cancel()
             self.handle = None
 
+    async def render_put(self, request):
+        print('PUT payload: %s' % request.payload)
+        data = json.loads(request.payload)
+
+        # Check if the immutable parameters are being changed
+        if "topic-name" in data or "topic-data" in data or "resource-type" in data:
+            return aiocoap.Message(code=aiocoap.BAD_REQUEST)
+
+        # Update the content of the TopicResource
+        content_dict = json.loads(self.content.decode('utf-8'))
+
+        if 'media-type' in data:
+            content_dict['media-type'] = data['media-type']
+
+        if 'topic-type' in data:
+            content_dict['topic-type'] = data['topic-type']
+
+        if 'expiration-date' in data:
+            content_dict['expiration-date'] = data['expiration-date']
+
+        if 'max-subscribers' in data:
+            content_dict['max-subscribers'] = data['max-subscribers']
+
+        self.content = json.dumps(content_dict).encode('utf-8')
+
+        # Create the response message
+        response = aiocoap.Message(code=aiocoap.CHANGED, payload=self.content)
+        response.opt.content_format = aiocoap.numbers.media_types_rev["application/json"]
+
+        return response
+
     # Method for handling GET requests
     async def render_get(self, request):
         if not self.content:
@@ -131,6 +162,13 @@ class TopicResource(resource.ObservableResource):
 
     # Method for handling DELETE requests
     async def render_delete(self, request):
+        # Remove this resource from the site
+        self.site.remove_resource(self.path)
+
+        # Remove the associated topic-data resource from the site
+        topic_data_path = self.content['topic-data'].split('/')
+        self.site.remove_resource(topic_data_path)
+
         # Return a 2.02 Deleted response
         return aiocoap.Message(code=aiocoap.DELETED)
 
