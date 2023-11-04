@@ -11,6 +11,9 @@ import asyncio
 import aiocoap.resource as resource
 import aiocoap
 import secrets
+import cbor2
+from aiocoap import Message, BAD_REQUEST
+from aiocoap.numbers import ContentFormat
 
 # Define a collection resource for storing topics
 class CollectionResource(resource.Resource):
@@ -47,6 +50,9 @@ class CollectionResource(resource.Resource):
             print("Stopping observation")
             self.handle.cancel()
             self.handle = None
+    def get_topic_resources(self):
+        """Return a dictionary of TopicResource instances in the site."""
+        return {path: resource for path, resource in self.root._resources.items() if isinstance(resource, TopicResource)}
 
     # Method for handling POST requests
     async def render_post(self, request):
@@ -88,6 +94,48 @@ class CollectionResource(resource.Resource):
     # Method for handling GET requests
     async def render_get(self, request):
         return aiocoap.Message(payload=self.content.encode('UTF-8'))
+    
+    # Method for handling FETCH requests
+    async def render_fetch(self, request):
+        try:
+            print('FETCH payload: %s' % request.payload)
+            
+            # Decode the request payload and convert it from CBOR to JSON
+            request_data = cbor2.loads(request.payload)
+
+            # Create a list to store the links to the resources that match the filter
+            matching_links = []
+
+            # Get the TopicResource instances in the site
+            topic_resources = self.get_topic_resources()
+
+            # Check each TopicResource
+            for path, resource in topic_resources.items():
+                path_str = '/'.join(path)
+                # Print the resource and its content
+                content = json.loads(resource.content.decode('utf-8'))
+                print(f'Resource: {path_str}, Content: {content}')
+                # Check if the resource matches the filter
+                if resource.matches(request_data):
+                    # Add the link to the matching resource to the list
+                    matching_links.append(f'<{path_str}>;rt="core.ps.conf"')
+
+            # Convert the list of links to a string
+            payload = ','.join(matching_links)
+            
+            # Debug print statement
+            print('Matching links:', matching_links)
+            
+            # Create the response message
+            response = Message(code=aiocoap.CONTENT, payload=payload.encode('utf-8'))
+            response.opt.content_format = 40
+
+            return response
+
+        except Exception as e:
+            # If there's an error, return a 4.00 Bad Request response
+            return Message(code=BAD_REQUEST, payload=str(e).encode('utf-8'))
+
 
 # Define a resource class for topic configurations
 class TopicResource(resource.ObservableResource):
@@ -98,6 +146,26 @@ class TopicResource(resource.ObservableResource):
         self.content = json.dumps(content).encode('utf-8')
         self.ct = content.get('media-type', 'application/link-format') # default is 'application/link-format' if not provided
         self.rt = "core.ps.conf"
+    
+    def matches(self, filter):
+        # Load the content of the resource as a JSON object
+        content = json.loads(self.content.decode('utf-8'))
+
+        print('Content:', content)  # Debug print statement
+
+        # Check each key-value pair in the filter
+        for key, value in filter.items():
+            # If the key is not in the resource's content or the values don't match, return False
+            if key not in content:
+                print(f'Key {key} not found in content')  # Debug print statement
+                return False
+            elif str(content[key]) != str(value):
+                print(f'Mismatch: key {key}, content value {content[key]}, filter value {value}')  # Debug print statement
+                return False
+
+        print('Match:', content)  # Debug print statement
+        # If all key-value pairs in the filter match, return True
+        return True
 
     # Method for setting content of the resource
     def set_content(self, content):

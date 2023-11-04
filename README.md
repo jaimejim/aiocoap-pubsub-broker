@@ -97,6 +97,37 @@ Any topic-configuration can be retrieved via its corresponding URI.
 
 From it, the associated topic-data can be interacted with providing it is FULLY created. For that a publisher needs to publish.
 
+### Update a topic-configuration
+
+Properties of a topic-configuration can be updated on its corresponding URI.
+
+```sh
+❯ ./client.py -m PUT coap://127.0.0.1:5683/ps/b616a3 --payload "{\"max-subscribers\": 200}"
+Response arrived from different address; base URI is coap://127.0.0.1/ps/b616a3
+JSON re-formated and indented
+{
+    "topic-name": "Room Temperature Sensor",
+    "topic-data": "ps/data/957d7fd",
+    "resource-type": "core.ps.conf",
+    "media-type": "application/json",
+    "topic-type": "temperature",
+    "expiration-date": "2023-04-05T23:59:59Z",
+    "max-subscribers": 200,
+    "observer-check": 86400
+}
+```
+
+### FETCH a topic-configurations by Properties
+
+A client can filter a collection of topics with a topic filter in a FETCH request to the topic collection URI.
+
+```sh
+❯ ./client.py -m FETCH 'coap://127.0.0.1/ps' --content-format 'application/cbor' --payload '{"max-subscribers": 200}'
+application/link-format content was re-formatted
+<ps/b616a3>; rt=core.ps.conf
+
+```
+
 ### Publish
 
 A CoAP client can act as publisher by sending a CoAP PUT to a topic-data resource. This initializes the resource into [FULLY CREATED](https://www.ietf.org/archive/id/draft-ietf-core-coap-pubsub-12.html#name-topic-lifecycle-2) state:
