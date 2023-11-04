@@ -104,7 +104,9 @@ class CollectionResource(resource.Resource):
 
     # Method for handling GET requests
     async def render_get(self, request):
-        return aiocoap.Message(payload=self.content.encode('UTF-8'))
+        response = aiocoap.Message(payload=self.content.encode('UTF-8'))
+        response.opt.content_format = aiocoap.numbers.media_types_rev["application/link-format"]
+        return response
     
     # Method for handling FETCH requests
     async def render_fetch(self, request):
