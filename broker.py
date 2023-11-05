@@ -237,20 +237,29 @@ class TopicResource(resource.ObservableResource):
         return response
 
     async def render_ipatch(self, request):
-        print('iPATCH payload: %s' % request.payload)
-        data = json.loads(request.payload)
+        try:
+            print('iPATCH payload: %s' % request.payload)
+            data = json.loads(request.payload)
+        except json.JSONDecodeError:
+            return aiocoap.Message(code=aiocoap.BAD_REQUEST)
 
         # Check if the immutable parameters are being changed
-        if "topic-name" in data or "topic-data" in data or "resource-type" in data:
+        immutable_params = ["topic-name", "topic-data", "resource-type"]
+        if any(param in data for param in immutable_params):
             return aiocoap.Message(code=aiocoap.BAD_REQUEST)
 
         # Update the content of the TopicResource
-        content_dict = json.loads(self.content.decode('utf-8'))
+        try:
+            content_dict = json.loads(self.content.decode('utf-8'))
+        except json.JSONDecodeError:
+            return aiocoap.Message(code=aiocoap.INTERNAL_SERVER_ERROR)
 
         # Update only the fields that are present in the request
         for field in data:
             if field in content_dict:
                 content_dict[field] = data[field]
+            else:
+                return aiocoap.Message(code=aiocoap.NOT_FOUND)
 
         self.content = json.dumps(content_dict).encode('utf-8')
 

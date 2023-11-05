@@ -171,6 +171,7 @@ The broker implements the following resource classes:
 - Configuration
     - [x] POST topic to create topic
     - [x] PUT to update topic configuration
+    - [x] iPATCH to partially update topic configuration
     - [ ] Client defined topic-data url
     - [ ] DELETE topic to delete topic
 - Topic Data
