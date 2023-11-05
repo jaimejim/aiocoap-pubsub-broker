@@ -269,7 +269,6 @@ class TopicResource(resource.ObservableResource):
 
         return response
 
-
     # Method for handling GET requests
     async def render_get(self, request):
         if not self.content:

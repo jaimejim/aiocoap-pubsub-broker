@@ -9,10 +9,10 @@ This is a simple CoAP broker implemented in Python using the [`aiocoap`](https:/
 
 ## Installation
 
-Install the required Python packages:
+You need to install the latest development version of aiocoap, which supports iPATCH.
 
 ```sh
-pip install aiocoap
+pip3 install --upgrade "git+https://github.com/chrysn/aiocoap#egg=aiocoap[all]"
 ```
 
 ## Usage
@@ -30,14 +30,19 @@ The broker will start listening on 127.0.0.1:5683.
 Any client can create a topic-configuration as "admin":
 
 ```sh
-❯ ./client.py -m POST coap://127.0.0.1:5683/ps --payload "{\"topic-name\": \"Room Temperature Sensor\", \"resource-type\": \"core.ps.conf\", \"media-type\": \"application/json\", \"target-attribute\": \"temperature\", \"expiration-date\": \"2023-04-05T23:59:59Z\", \"max-subscribers\": 100}"
+❯ ./client.py -m POST coap://127.0.0.1:5683/ps --payload "{\"topic-name\": \"Room Temperature Sensor\", \"resource-type\": \"core.ps.conf\", \"media-type\": \"application/json\", \"topic-type\": \"temperature\", \"expiration-date\": \"2023-04-05T23:59:59Z\", \"max-subscribers\": 200, \"observer-check\": 86400}"
 Response arrived from different address; base URI is coap://127.0.0.1/ps
-Location options indicate new resource: /ps/4fb3de
+Location options indicate new resource: /ps/e99889
 JSON re-formated and indented
 {
     "topic-name": "Room Temperature Sensor",
-    "topic-data": "ps/data/a08b18d",
-    "resource-type": "core.ps.conf"
+    "topic-data": "ps/data/08dd75d",
+    "resource-type": "core.ps.conf",
+    "media-type": "application/json",
+    "topic-type": "temperature",
+    "expiration-date": "2023-04-05T23:59:59Z",
+    "max-subscribers": 200,
+    "observer-check": 86400
 }
 ```
 
@@ -91,13 +96,13 @@ application/link-format content was re-formatted
 Any topic-configuration can be retrieved via its corresponding URI.
 
 ```sh
-❯ ./client.py -m GET coap://127.0.0.1/ps/4fb3de
-{"topic-name": "Room Temperature Sensor", "topic-data": "ps/data/a08b18d", "resource-type": "core.ps.conf"}
+❯ ./client.py -m GET 'coap://127.0.0.1/ps/e99889'
+{"topic-name": "Room Temperature Sensor", "topic-data": "ps/data/08dd75d", "resource-type": "core.ps.conf", "media-type": "application/json", "topic-type": "temperature", "expiration-date": "2023-04-05T23:59:59Z", "max-subscribers": 200, "observer-check": 86400}
 ```
 
 From it, the associated topic-data can be interacted with providing it is FULLY created. For that a publisher needs to publish.
 
-### Update a topic-configuration
+### Update a topic-configuration with PUT
 
 Properties of a topic-configuration can be updated on its corresponding URI.
 
@@ -117,15 +122,33 @@ JSON re-formated and indented
 }
 ```
 
+### Update a topic-configuration with iPATCH
+
+Properties of a topic-configuration can be updated on its corresponding URI.
+
+```sh
+❯ ./client.py -m iPATCH coap://127.0.0.1/ps/e99889 --payload "{\"max-subscribers\": 300}"
+JSON re-formated and indented
+{
+    "topic-name": "Room Temperature Sensor",
+    "topic-data": "ps/data/08dd75d",
+    "resource-type": "core.ps.conf",
+    "media-type": "application/json",
+    "topic-type": "temperature",
+    "expiration-date": "2023-04-05T23:59:59Z",
+    "max-subscribers": 300,
+    "observer-check": 86400
+}
+```
+
 ### FETCH a topic-configurations by Properties
 
 A client can filter a collection of topics with a topic filter in a FETCH request to the topic collection URI.
 
 ```sh
-❯ ./client.py -m FETCH 'coap://127.0.0.1/ps' --content-format 'application/cbor' --payload '{"max-subscribers": 200}'
+./client.py -m FETCH 'coap://127.0.0.1/ps' --content-format 'application/cbor' --payload '{"max-subscribers": 300}'
 application/link-format content was re-formatted
-<ps/b616a3>; rt=core.ps.conf
-
+<ps/e99889>; rt=core.ps.conf
 ```
 
 ### Publish
@@ -133,8 +156,8 @@ application/link-format content was re-formatted
 A CoAP client can act as publisher by sending a CoAP PUT to a topic-data resource. This initializes the resource into [FULLY CREATED](https://www.ietf.org/archive/id/draft-ietf-core-coap-pubsub-12.html#name-topic-lifecycle-2) state:
 
 ```sh
-❯ ./client.py -m PUT coap://127.0.0.1:5683/ps/data/a08b18d --payload "{"n": "temperature","u": "Cel","t": 1621452122,"v": 21.3}"
-Response arrived from different address; base URI is coap://127.0.0.1/ps/data/a08b18d
+❯ ./client.py -m PUT coap://127.0.0.1:5683/ps/data/08dd75d --payload "{"n": "temperature","u": "Cel","t": 1621452122,"v": 21.3}"
+Response arrived from different address; base URI is coap://127.0.0.1/ps/data/08dd75d
 {n: temperature,u: Cel,t: 1621452122,v: 21.3}
 ```
 
@@ -143,12 +166,13 @@ Response arrived from different address; base URI is coap://127.0.0.1/ps/data/a0
 Subscribe to a topic by using CoAP Observe:
 
 ```sh
-❯ ./client.py -m GET --observe coap://127.0.0.1:5683/ps/data/a08b18d
-Response arrived from different address; base URI is coap://127.0.0.1/ps/data/a08b18d
+❯ ./client.py -m GET --observe coap://127.0.0.1:5683/ps/data/08dd75d
+Response arrived from different address; base URI is coap://127.0.0.1/ps/data/08dd75d
 {n: temperature,u: Cel,t: 1621452122,v: 21.3}
 ---
 {n: temperature,u: Cel,t: 1621452122,v: 21.3}
 ```
+
 ## Resource Classes
 
 The broker implements the following resource classes:
@@ -172,8 +196,8 @@ The broker implements the following resource classes:
     - [x] POST topic to create topic
     - [x] PUT to update topic configuration
     - [x] iPATCH to partially update topic configuration
+    - [x] DELETE topic to delete topic
     - [ ] Client defined topic-data url
-    - [ ] DELETE topic to delete topic
 - Topic Data
     - [x] PUT on topic-data to publish
     - [x] GET + observe on topic-data to Subscribe
