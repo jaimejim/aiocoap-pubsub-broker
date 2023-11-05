@@ -236,6 +236,31 @@ class TopicResource(resource.ObservableResource):
 
         return response
 
+    async def render_ipatch(self, request):
+        print('iPATCH payload: %s' % request.payload)
+        data = json.loads(request.payload)
+
+        # Check if the immutable parameters are being changed
+        if "topic-name" in data or "topic-data" in data or "resource-type" in data:
+            return aiocoap.Message(code=aiocoap.BAD_REQUEST)
+
+        # Update the content of the TopicResource
+        content_dict = json.loads(self.content.decode('utf-8'))
+
+        # Update only the fields that are present in the request
+        for field in data:
+            if field in content_dict:
+                content_dict[field] = data[field]
+
+        self.content = json.dumps(content_dict).encode('utf-8')
+
+        # Create the response message
+        response = aiocoap.Message(code=aiocoap.CHANGED, payload=self.content)
+        response.opt.content_format = aiocoap.numbers.media_types_rev["application/json"]
+
+        return response
+
+
     # Method for handling GET requests
     async def render_get(self, request):
         if not self.content:
