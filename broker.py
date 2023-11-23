@@ -70,8 +70,13 @@ class CollectionResource(resource.Resource):
         print('POST payload: %s' % request.payload)
         data = json.loads(request.payload)
 
+        # Check if client provided a topic data path
+        if "topic-data" in data:
+            topic_data_path = data["topic-data"]
+        else:
+            topic_data_path = f'ps/data/{secrets.token_hex(3)}d'
+        
         topic_config_path = f'ps/{secrets.token_hex(3)}'
-        topic_data_path = f'ps/data/{secrets.token_hex(3)}d'
         config_path_segments = topic_config_path.split('/')
         data_path_segments = topic_data_path.split('/')
 
