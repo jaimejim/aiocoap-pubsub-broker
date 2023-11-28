@@ -30,7 +30,10 @@ The broker will start listening on 127.0.0.1:5683.
 Any client can create a topic-configuration as "admin":
 
 ```sh
-❯ ./client.py -m POST coap://127.0.0.1:5683/ps --payload "{\"topic-name\": \"Room Temperature Sensor\", \"resource-type\": \"core.ps.conf\", \"media-type\": \"application/json\", \"topic-type\": \"temperature\", \"expiration-date\": \"2023-04-05T23:59:59Z\", \"max-subscribers\": 200, \"observer-check\": 86400}"
+./client.py -m POST coap://127.0.0.1:5683/ps --payload "{\"topic-name\": \"Room Temperature Sensor\", \"resource-type\": \"core.ps.conf\", \"media-type\": \"application/json\", \"topic-type\": \"temperature\", \"expiration-date\": \"2023-04-05T23:59:59Z\", \"max-subscribers\": 200, \"observer-check\": 86400}"
+```
+
+```js
 Response arrived from different address; base URI is coap://127.0.0.1/ps
 Location options indicate new resource: /ps/e99889
 JSON re-formated and indented
@@ -65,7 +68,10 @@ You may discover the following resource types:
 or
 
 ```sh
-❯ ./client.py -m GET coap://127.0.0.1/.well-known/core
+./client.py -m GET coap://127.0.0.1/.well-known/core
+```
+
+```js
 application/link-format content was re-formatted
 </.well-known/core>; ct=40,
 </ps>; rt=core.ps.coll,
@@ -78,6 +84,9 @@ or by `rt`
 
 ```sh
 ./client.py -m GET 'coap://127.0.0.1/.well-known/core?rt=core.ps.conf'
+```
+
+```js
 application/link-format content was re-formatted
 </ps/dd4494>; ct=None; rt=core.ps.conf; obs,
 </ps/cdc49a>; ct=application/json; rt=core.ps.conf; obs
@@ -86,7 +95,10 @@ application/link-format content was re-formatted
 or
 
 ```sh
-❯ ./client.py -m GET 'coap://127.0.0.1/.well-known/core?rt=core.ps.coll'
+./client.py -m GET 'coap://127.0.0.1/.well-known/core?rt=core.ps.coll'
+```
+
+```js
 application/link-format content was re-formatted
 </ps>; rt=core.ps.coll
 ```
@@ -96,7 +108,10 @@ application/link-format content was re-formatted
 Any topic-configuration can be retrieved via its corresponding URI.
 
 ```sh
-❯ ./client.py -m GET 'coap://127.0.0.1/ps/e99889'
+./client.py -m GET 'coap://127.0.0.1/ps/e99889'
+```
+
+```js
 {"topic-name": "Room Temperature Sensor", "topic-data": "ps/data/08dd75d", "resource-type": "core.ps.conf", "media-type": "application/json", "topic-type": "temperature", "expiration-date": "2023-04-05T23:59:59Z", "max-subscribers": 200, "observer-check": 86400}
 ```
 
@@ -107,7 +122,10 @@ From it, the associated topic-data can be interacted with providing it is FULLY 
 Properties of a topic-configuration can be updated on its corresponding URI.
 
 ```sh
-❯ ./client.py -m PUT coap://127.0.0.1:5683/ps/b616a3 --payload "{\"max-subscribers\": 200}"
+./client.py -m PUT coap://127.0.0.1:5683/ps/b616a3 --payload "{\"max-subscribers\": 200}"
+```
+
+```js
 Response arrived from different address; base URI is coap://127.0.0.1/ps/b616a3
 JSON re-formated and indented
 {
@@ -127,7 +145,10 @@ JSON re-formated and indented
 Properties of a topic-configuration can be updated on its corresponding URI.
 
 ```sh
-❯ ./client.py -m iPATCH coap://127.0.0.1/ps/e99889 --payload "{\"max-subscribers\": 300}"
+./client.py -m iPATCH coap://127.0.0.1/ps/e99889 --payload "{\"max-subscribers\": 300}"
+```
+
+```js
 JSON re-formated and indented
 {
     "topic-name": "Room Temperature Sensor",
@@ -147,6 +168,9 @@ A client can filter a collection of topics with a topic filter in a FETCH reques
 
 ```sh
 ./client.py -m FETCH 'coap://127.0.0.1/ps' --content-format 'application/cbor' --payload '{"max-subscribers": 300}'
+```
+
+```js
 application/link-format content was re-formatted
 <ps/e99889>; rt=core.ps.conf
 ```
@@ -156,7 +180,10 @@ application/link-format content was re-formatted
 A CoAP client can act as publisher by sending a CoAP PUT to a topic-data resource. This initializes the resource into [FULLY CREATED](https://www.ietf.org/archive/id/draft-ietf-core-coap-pubsub-12.html#name-topic-lifecycle-2) state:
 
 ```sh
-❯ ./client.py -m PUT coap://127.0.0.1:5683/ps/data/08dd75d --payload "{"n": "temperature","u": "Cel","t": 1621452122,"v": 21.3}"
+./client.py -m PUT coap://127.0.0.1:5683/ps/data/08dd75d --payload "{"n": "temperature","u": "Cel","t": 1621452122,"v": 21.3}"
+```
+
+```js
 Response arrived from different address; base URI is coap://127.0.0.1/ps/data/08dd75d
 {n: temperature,u: Cel,t: 1621452122,v: 21.3}
 ```
@@ -166,7 +193,10 @@ Response arrived from different address; base URI is coap://127.0.0.1/ps/data/08
 Subscribe to a topic by using CoAP Observe:
 
 ```sh
-❯ ./client.py -m GET --observe coap://127.0.0.1:5683/ps/data/08dd75d
+./client.py -m GET --observe coap://127.0.0.1:5683/ps/data/08dd75d
+```
+
+```js
 Response arrived from different address; base URI is coap://127.0.0.1/ps/data/08dd75d
 {n: temperature,u: Cel,t: 1621452122,v: 21.3}
 ---

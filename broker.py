@@ -154,7 +154,6 @@ class CollectionResource(resource.Resource):
             # If there's an error, return a 4.00 Bad Request response
             return Message(code=BAD_REQUEST, payload=str(e).encode('utf-8'))
 
-
 # Define a resource class for topic configurations
 class TopicResource(resource.ObservableResource):
 
@@ -363,7 +362,7 @@ async def main():
     root.add_resource(['ps'], CollectionResource(root))
 
     # Start the CoAP server
-    await aiocoap.Context.create_server_context(bind=('127.0.0.1',5683),site=root)
+    await aiocoap.Context.create_server_context(bind=('0.0.0.0',5683),site=root)
 
     # Run forever
     await asyncio.get_running_loop().create_future()
