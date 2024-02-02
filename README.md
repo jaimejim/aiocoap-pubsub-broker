@@ -235,5 +235,6 @@ The broker implements the following resource classes:
     - [ ] Delete to delete topic-data
 - Other
     - [ ] Improve Broker Logic
+    - [ ] Fix Scripts 
 
 Disclaimer: There is lots of hardcoded stuff, as this was quickly developed during the IETF116 nad IETF118 hackathons.
