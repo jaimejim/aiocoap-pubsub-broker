@@ -362,7 +362,7 @@ async def main():
     root.add_resource(['ps'], CollectionResource(root))
 
     # Start the CoAP server
-    await aiocoap.Context.create_server_context(bind=('0.0.0.0',5683),site=root)
+    await aiocoap.Context.create_server_context(bind=('iot.dev',5683),site=root)
 
     # Run forever
     await asyncio.get_running_loop().create_future()
