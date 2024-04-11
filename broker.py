@@ -4,7 +4,6 @@
 # This simple broker script is implemented by Jaime Jiménez, it implements
 # https://datatracker.ietf.org/doc/html/draft-ietf-core-coap-pubsub-12
 
-import datetime
 import logging
 import json
 import asyncio
@@ -31,25 +30,26 @@ class CollectionResource(resource.Resource):
     # Method for setting content of the resource
     def set_content(self, content):
         self.content = content
+        self.updated_state()
 
     # Method for notifying observers
-    def notify(self):
-        self.updated_state()
-        self.reschedule()
+    # def notify(self):
+    #     updated_state()
+    #     self.reschedule()
 
-    # Method for rescheduling the observer notification
-    def reschedule(self):
-        self.handle = asyncio.get_event_loop().call_later(5, self.notify)
+    # # Method for rescheduling the observer notification
+    # def reschedule(self):
+    #     self.handle = asyncio.get_event_loop().call_later(5, self.notify)
 
-    # Method for updating the observation count
-    def update_observation_count(self, count):
-        if count and self.handle is None:
-            print("Starting observation")
-            self.reschedule()
-        if count == 0 and self.handle:
-            print("Stopping observation")
-            self.handle.cancel()
-            self.handle = None
+    # # Method for updating the observation count
+    # def update_observation_count(self, count):
+    #     if count and self.handle is None:
+    #         print("Starting observation")
+    #         self.reschedule()
+    #     if count == 0 and self.handle:
+    #         print("Stopping observation")
+    #         self.handle.cancel()
+    #         self.handle = None
     
     def get_topic_resources(self):
         """Return a dictionary of TopicResource instances in the site."""
@@ -94,6 +94,7 @@ class CollectionResource(resource.Resource):
         self.root.add_resource(config_path_segments, TopicResource(topic_config_json, self.root, config_path_segments))
         self.root.add_resource(data_path_segments, TopicDataResource())
 
+        # Add more rt= with media-type, topic-type etc.
         new_link = f'<{topic_config_path}>;rt="core.ps.conf"'
         if self.content:
             self.content += ',' + new_link
@@ -189,25 +190,26 @@ class TopicResource(resource.ObservableResource):
     # Method for setting content of the resource
     def set_content(self, content):
         self.content = content
+        self.updated_state()
 
     # Method for notifying observers
-    def notify(self):
-        self.updated_state()
-        self.reschedule()
+    # def notify(self):
+    #     self.updated_state()
+    #     #self.reschedule()
 
     # Method for rescheduling the observer notification
-    def reschedule(self):
-        self.handle = asyncio.get_event_loop().call_later(5, self.notify)
+    # def reschedule(self):
+    #     self.handle = asyncio.get_event_loop().call_later(5, self.notify)
 
     # Method for updating the observation count
-    def update_observation_count(self, count):
-        if count and self.handle is None:
-            print("Starting observation")
-            self.reschedule()
-        if count == 0 and self.handle:
-            print("Stopping observation")
-            self.handle.cancel()
-            self.handle = None
+    # def update_observation_count(self, count):
+    #     if count and self.handle is None:
+    #         print("Starting observation")
+    #         self.reschedule()
+    #     if count == 0 and self.handle:
+    #         print("Stopping observation")
+    #         self.handle.cancel()
+    #         self.handle = None
 
     async def render_put(self, request):
         print('PUT payload: %s' % request.payload)
@@ -317,25 +319,26 @@ class TopicDataResource(resource.ObservableResource):
     # Method for setting content of the resource
     def set_content(self, content):
         self.content = content
+        self.updated_state()
 
     # Method for notifying observers
-    def notify(self):
-        self.updated_state()
-        self.reschedule()
+    # def notify(self):
+    #     self.updated_state()
+    #   self.reschedule()
 
-    # Method for rescheduling the observer notification
-    def reschedule(self):
-        self.handle = asyncio.get_event_loop().call_later(5, self.notify)
+    # # Method for rescheduling the observer notification
+    # def reschedule(self):
+    #     self.handle = asyncio.get_event_loop().call_later(5, self.notify)
 
-    # Method for updating the observation count
-    def update_observation_count(self, count):
-        if count and self.handle is None:
-            print("Starting observation")
-            self.reschedule()
-        if count == 0 and self.handle:
-            print("Stopping observation")
-            self.handle.cancel()
-            self.handle = None
+    # # Method for updating the observation count
+    # def update_observation_count(self, count):
+    #     if count and self.handle is None:
+    #         print("Starting observation")
+    #         self.reschedule()
+    #     if count == 0 and self.handle:
+    #         print("Stopping observation")
+    #         self.handle.cancel()
+    #         self.handle = None
 
     # Method for handling PUT requests
     async def render_put(self, request):
