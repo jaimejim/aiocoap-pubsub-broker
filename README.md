@@ -2,8 +2,6 @@
 
 This is a simple CoAP broker implemented in Python using the [`aiocoap`](https://github.com/chrysn/aiocoap) library. The broker creates and manages resources for storing data by implementing various Resource classes provided by aiocoap. The script follows publish-subscribe architecture for the Constrained Application Protocol (CoAP) defined at [draft-ietf-core-coap-pubsub](https://datatracker.ietf.org/doc/draft-ietf-core-coap-pubsub/).
 
-![arch](./arch.svg)
-
 
 ## Requirements
 
@@ -15,12 +13,6 @@ This is a simple CoAP broker implemented in Python using the [`aiocoap`](https:/
 
 ```sh
 pip3 install --upgrade "git+https://github.com/chrysn/aiocoap#egg=aiocoap[all]"
-```
-
-- I have an entry from the broker uri on `/etc/hosts` for demo purposes, you may want to have the same:
-
-```sh
-127.0.0.1	iot.dev
 ```
 
 ## Usage
@@ -35,17 +27,27 @@ The broker will start listening on `127.0.0.1:5683`.
 
 You can use `poetry` to manage dependencies. Simply run `poetry install` to install all required packages, and then use `poetry run python3 broker.py` to start the broker.
 
-### Create Topic
+### Creating Topics
 
-The broker hosts topic resources on which topic-data resources that clients can subscribe/publish to rest.
+A CoAP server exposes a collection of topics as resources, each with a topic resource for administration and a topic-data resource for publishing and subscribing.
 
 ![topics](./topics.svg)
 
 A client can create a topic as "admin":
 
 ```sh
-./client.py -m POST coap://127.0.0.1:5683/ps --payload "{\"topic-name\": \"Room Temperature Sensor\", \"resource-type\": \"core.ps.conf\", \"media-type\": \"application/json\", \"topic-type\": \"temperature\", \"expiration-date\": \"2023-04-05T23:59:59Z\", \"max-subscribers\": 200, \"observer-check\": 86400}"
+poetry run python3 client.py -m POST coap://127.0.0.1:5683/ps --payload '{
+    "topic-name": "Room Temperature Sensor",
+    "resource-type": "core.ps.conf",
+    "media-type": "application/json",
+    "topic-type": "temperature",
+    "expiration-date": "2023-04-05T23:59:59Z",
+    "max-subscribers": 200,
+    "observer-check": 86400
+}'
 ```
+
+The broker will show:
 
 ```js
 Response arrived from different address; base URI is coap://127.0.0.1/ps
@@ -63,9 +65,9 @@ JSON re-formated and indented
 }
 ```
 
-The broker will create the resource paths for both the topic and topic-data resources.
+The broker will create the resource paths for both the topic and topic-data (`ps/data/08dd75d`) resources.
 
-### Discover
+### Discovering topics
 
 Discover topics either via `.well-known/core` or by querying the collection resource `ps`.
 
@@ -75,14 +77,14 @@ You may discover the following resource types:
 - `core.ps.data` - the topic-data resource.
 
 ```sh
-❯ ./client.py -m GET coap://127.0.0.1/ps
+❯ poetry run python3 client.py -m GET coap://127.0.0.1/ps
 <ps/4fb3de>;rt="core.ps.conf"
 ```
 
 or
 
 ```sh
-./client.py -m GET coap://127.0.0.1/.well-known/core
+poetry run python3 client.py -m GET coap://127.0.0.1/.well-known/core
 ```
 
 ```js
@@ -97,7 +99,7 @@ application/link-format content was re-formatted
 or by `rt`
 
 ```sh
-./client.py -m GET 'coap://127.0.0.1/.well-known/core?rt=core.ps.conf'
+poetry run python3 client.py -m GET 'coap://127.0.0.1/.well-known/core?rt=core.ps.conf'
 ```
 
 ```js
@@ -109,7 +111,7 @@ application/link-format content was re-formatted
 or
 
 ```sh
-./client.py -m GET 'coap://127.0.0.1/.well-known/core?rt=core.ps.coll'
+poetry run python3 client.py -m GET 'coap://127.0.0.1/.well-known/core?rt=core.ps.coll'
 ```
 
 ```js
@@ -122,7 +124,7 @@ application/link-format content was re-formatted
 Any topic can be retrieved via its corresponding URI.
 
 ```sh
-./client.py -m GET 'coap://127.0.0.1/ps/e99889'
+poetry run python3 client.py -m GET 'coap://127.0.0.1/ps/e99889'
 ```
 
 ```js
@@ -136,7 +138,7 @@ From it, the associated topic-data can be interacted with providing it is FULLY 
 Properties of a topic can be updated on its corresponding URI.
 
 ```sh
-./client.py -m PUT coap://127.0.0.1:5683/ps/b616a3 --payload "{\"max-subscribers\": 200}"
+poetry run python3 client.py -m PUT coap://127.0.0.1:5683/ps/b616a3 --payload "{\"max-subscribers\": 200}"
 ```
 
 ```js
@@ -159,7 +161,7 @@ JSON re-formated and indented
 Properties of a topic can be updated on its corresponding URI.
 
 ```sh
-./client.py -m iPATCH coap://127.0.0.1/ps/e99889 --payload "{\"max-subscribers\": 300}"
+poetry run python3 client.py -m iPATCH coap://127.0.0.1/ps/e99889 --payload "{\"max-subscribers\": 300}"
 ```
 
 ```js
@@ -181,7 +183,7 @@ JSON re-formated and indented
 A client can filter a collection of topics with a topic filter in a FETCH request to the topic collection URI.
 
 ```sh
-./client.py -m FETCH 'coap://127.0.0.1/ps' --content-format 'application/cbor' --payload '{"max-subscribers": 300}'
+poetry run python3 client.py -m FETCH 'coap://127.0.0.1/ps' --content-format 'application/cbor' --payload '{"max-subscribers": 300}'
 ```
 
 ```js
@@ -189,12 +191,25 @@ application/link-format content was re-formatted
 <ps/e99889>; rt=core.ps.conf
 ```
 
+## Publish and subscribe operations
+
+Publishers use PUT to send data to a topic-data resource. Subscribers use GET with Observe set to 0 to receive updates. A topic-data resource is created only after initial data is published. Before that, GET requests return 4.04 (Not Found). URIs for topic resources are broker-generated.
+
+
+![arch](./arch.svg)
+
+
 ### Publish
 
 A CoAP client can act as publisher by sending a CoAP PUT to a topic-data resource. This initializes the resource into [FULLY CREATED](https://www.ietf.org/archive/id/draft-ietf-core-coap-pubsub-12.html#name-topic-lifecycle-2) state:
 
 ```sh
-./client.py -m PUT coap://127.0.0.1:5683/ps/data/08dd75d --payload "{"n": "temperature","u": "Cel","t": 1621452122,"v": 21.3}"
+poetry run python3 client.py -m PUT coap://127.0.0.1:5683/ps/data/08dd75d --payload '{
+    "n": "temperature",
+    "u": "Cel",
+    "t": 1621452122,
+    "v": 21.3
+}'
 ```
 
 ```js
@@ -207,7 +222,7 @@ Response arrived from different address; base URI is coap://127.0.0.1/ps/data/08
 Subscribe to a topic by using CoAP Observe:
 
 ```sh
-./client.py -m GET --observe coap://127.0.0.1:5683/ps/data/08dd75d
+poetry run python3 client.py -m GET --observe coap://127.0.0.1:5683/ps/data/08dd75d
 ```
 
 ```js
