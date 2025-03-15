@@ -1,0 +1,135 @@
+<svg xmlns="http://www.w3.org/2000/svg" version="1.1" height="320" width="448" viewBox="0 0 448 320" class="diagram" text-anchor="middle" font-family="monospace" font-size="13px" stroke-linecap="round">
+<path d="M 184,136 L 184,216" fill="none" stroke="black"/>
+<path d="M 272,136 L 272,216" fill="none" stroke="black"/>
+<path d="M 400,136 L 400,216" fill="none" stroke="black"/>
+<path d="M 164,232 L 172,248" fill="none" stroke="black"/>
+<path d="M 92,40 L 100,56" fill="none" stroke="black"/>
+<path d="M 164,152 L 172,168" fill="none" stroke="black"/>
+<path d="M 196,216 L 204,232" fill="none" stroke="black"/>
+<path d="M 228,264 L 236,280" fill="none" stroke="black"/>
+<path d="M 136,64 L 172,136" fill="none" stroke="black"/>
+<path d="M 124,24 L 132,40" fill="none" stroke="black"/>
+<path d="M 196,136 L 204,152" fill="none" stroke="black"/>
+<path d="M 252,232 L 260,248" fill="none" stroke="black"/>
+<path d="M 252,152 L 260,168" fill="none" stroke="black"/>
+<path d="M 284,216 L 292,232" fill="none" stroke="black"/>
+<path d="M 236,88 L 260,136" fill="none" stroke="black"/>
+<path d="M 284,136 L 292,152" fill="none" stroke="black"/>
+<path d="M 380,232 L 388,248" fill="none" stroke="black"/>
+<path d="M 380,152 L 388,168" fill="none" stroke="black"/>
+<path d="M 412,216 L 420,232" fill="none" stroke="black"/>
+<path d="M 364,88 L 388,136" fill="none" stroke="black"/>
+<path d="M 412,136 L 420,152" fill="none" stroke="black"/>
+<path d="M 92,40 L 100,24" fill="none" stroke="black"/>
+<path d="M 124,56 L 132,40" fill="none" stroke="black"/>
+<path d="M 164,152 L 172,136" fill="none" stroke="black"/>
+<path d="M 164,232 L 172,216" fill="none" stroke="black"/>
+<path d="M 196,168 L 204,152" fill="none" stroke="black"/>
+<path d="M 196,248 L 204,232" fill="none" stroke="black"/>
+<path d="M 252,152 L 260,136" fill="none" stroke="black"/>
+<path d="M 220,280 L 228,264" fill="none" stroke="black"/>
+<path d="M 252,232 L 260,216" fill="none" stroke="black"/>
+<path d="M 284,168 L 292,152" fill="none" stroke="black"/>
+<path d="M 284,248 L 292,232" fill="none" stroke="black"/>
+<path d="M 380,152 L 388,136" fill="none" stroke="black"/>
+<path d="M 380,232 L 388,216" fill="none" stroke="black"/>
+<path d="M 412,168 L 420,152" fill="none" stroke="black"/>
+<path d="M 412,248 L 420,232" fill="none" stroke="black"/>
+<path d="M 100,24 L 124,24" fill="none" stroke="black"/>
+<path d="M 100,56 L 124,56" fill="none" stroke="black"/>
+<path d="M 148,88 L 364,88" fill="none" stroke="black"/>
+<path d="M 172,136 L 196,136" fill="none" stroke="black"/>
+<path d="M 260,136 L 284,136" fill="none" stroke="black"/>
+<path d="M 388,136 L 412,136" fill="none" stroke="black"/>
+<path d="M 172,248 L 196,248" fill="none" stroke="black"/>
+<path d="M 260,248 L 284,248" fill="none" stroke="black"/>
+<path d="M 388,248 L 412,248" fill="none" stroke="black"/>
+<path d="M 148,280 L 220,280" fill="none" stroke="black"/>
+<path d="M 236,280 L 308,280" fill="none" stroke="black"/>
+<path d="M 364,280 L 436,280" fill="none" stroke="black"/>
+<circle cx="184" cy="144" r="6" class="closeddot" fill="black"/>
+<circle cx="272" cy="144" r="6" class="closeddot" fill="black"/>
+<circle cx="400" cy="144" r="6" class="closeddot" fill="black"/>
+<g class="text">
+<text x="40" y="36">topic</text>
+<text x="44" y="52">collection</text>
+<text x="44" y="68">resource</text>
+<text x="196" y="116">......</text>
+<text x="284" y="116">......</text>
+<text x="412" y="116">......</text>
+<text x="112" y="132">topic</text>
+<text x="152" y="132">:</text>
+<text x="216" y="132">:</text>
+<text x="240" y="132">:</text>
+<text x="304" y="132">:</text>
+<text x="368" y="132">:</text>
+<text x="432" y="132">:</text>
+<text x="100" y="148">resource</text>
+<text x="152" y="148">:</text>
+<text x="216" y="148">:</text>
+<text x="240" y="148">:</text>
+<text x="304" y="148">:</text>
+<text x="368" y="148">:</text>
+<text x="432" y="148">:</text>
+<text x="152" y="164">:</text>
+<text x="176" y="164">_</text>
+<text x="192" y="164">_</text>
+<text x="216" y="164">:</text>
+<text x="240" y="164">:</text>
+<text x="264" y="164">_</text>
+<text x="280" y="164">_</text>
+<text x="304" y="164">:</text>
+<text x="368" y="164">:</text>
+<text x="392" y="164">_</text>
+<text x="408" y="164">_</text>
+<text x="432" y="164">:</text>
+<text x="164" y="180">....</text>
+<text x="204" y="180">....</text>
+<text x="252" y="180">....</text>
+<text x="292" y="180">....</text>
+<text x="380" y="180">....</text>
+<text x="420" y="180">....</text>
+<text x="164" y="196">....</text>
+<text x="204" y="196">....</text>
+<text x="252" y="196">....</text>
+<text x="292" y="196">....</text>
+<text x="380" y="196">....</text>
+<text x="420" y="196">....</text>
+<text x="152" y="212">:</text>
+<text x="176" y="212">_</text>
+<text x="192" y="212">_</text>
+<text x="216" y="212">:</text>
+<text x="240" y="212">:</text>
+<text x="264" y="212">_</text>
+<text x="280" y="212">_</text>
+<text x="304" y="212">:</text>
+<text x="336" y="212">...</text>
+<text x="368" y="212">:</text>
+<text x="392" y="212">_</text>
+<text x="408" y="212">_</text>
+<text x="432" y="212">:</text>
+<text x="92" y="228">topic-data</text>
+<text x="152" y="228">:</text>
+<text x="216" y="228">:</text>
+<text x="240" y="228">:</text>
+<text x="304" y="228">:</text>
+<text x="368" y="228">:</text>
+<text x="432" y="228">:</text>
+<text x="100" y="244">resource</text>
+<text x="152" y="244">:</text>
+<text x="216" y="244">:</text>
+<text x="240" y="244">:</text>
+<text x="304" y="244">:</text>
+<text x="368" y="244">:</text>
+<text x="432" y="244">:</text>
+<text x="184" y="260">:.......:</text>
+<text x="272" y="260">:.......:</text>
+<text x="400" y="260">:.......:</text>
+<text x="144" y="276">\</text>
+<text x="336" y="276">/ ... \</text>
+<text x="440" y="276">/</text>
+<text x="184" y="292">topic 1</text>
+<text x="272" y="292">topic 2</text>
+<text x="400" y="292">topic n</text>
+</g>
+</svg>

@@ -1,0 +1,59 @@
+<svg xmlns="http://www.w3.org/2000/svg" version="1.1" height="256" width="488" viewBox="0 0 488 256" class="diagram" text-anchor="middle" font-family="monospace" font-size="13px" stroke-linecap="round">
+<path d="M 8,48 L 8,112" fill="none" stroke="black"/>
+<path d="M 8,160 L 8,224" fill="none" stroke="black"/>
+<path d="M 104,48 L 104,112" fill="none" stroke="black"/>
+<path d="M 104,160 L 104,224" fill="none" stroke="black"/>
+<path d="M 192,48 L 192,224" fill="none" stroke="black"/>
+<path d="M 280,48 L 280,224" fill="none" stroke="black"/>
+<path d="M 376,48 L 376,112" fill="none" stroke="black"/>
+<path d="M 376,160 L 376,224" fill="none" stroke="black"/>
+<path d="M 480,48 L 480,112" fill="none" stroke="black"/>
+<path d="M 480,160 L 480,224" fill="none" stroke="black"/>
+<path d="M 8,48 L 104,48" fill="none" stroke="black"/>
+<path d="M 192,48 L 280,48" fill="none" stroke="black"/>
+<path d="M 376,48 L 480,48" fill="none" stroke="black"/>
+<path d="M 288,64 L 376,64" fill="none" stroke="black"/>
+<path d="M 104,80 L 184,80" fill="none" stroke="black"/>
+<path d="M 280,80 L 368,80" fill="none" stroke="black"/>
+<path d="M 280,96 L 368,96" fill="none" stroke="black"/>
+<path d="M 8,112 L 104,112" fill="none" stroke="black"/>
+<path d="M 376,112 L 480,112" fill="none" stroke="black"/>
+<path d="M 8,160 L 104,160" fill="none" stroke="black"/>
+<path d="M 376,160 L 480,160" fill="none" stroke="black"/>
+<path d="M 288,176 L 376,176" fill="none" stroke="black"/>
+<path d="M 104,192 L 184,192" fill="none" stroke="black"/>
+<path d="M 280,192 L 368,192" fill="none" stroke="black"/>
+<path d="M 280,208 L 368,208" fill="none" stroke="black"/>
+<path d="M 8,224 L 104,224" fill="none" stroke="black"/>
+<path d="M 192,224 L 280,224" fill="none" stroke="black"/>
+<path d="M 376,224 L 480,224" fill="none" stroke="black"/>
+<polygon class="arrowhead" points="376,208 364,202.4 364,213.6" fill="black" transform="rotate(0,368,208)"/>
+<polygon class="arrowhead" points="376,192 364,186.4 364,197.6" fill="black" transform="rotate(0,368,192)"/>
+<polygon class="arrowhead" points="376,96 364,90.4 364,101.6" fill="black" transform="rotate(0,368,96)"/>
+<polygon class="arrowhead" points="376,80 364,74.4 364,85.6" fill="black" transform="rotate(0,368,80)"/>
+<polygon class="arrowhead" points="296,176 284,170.4 284,181.6" fill="black" transform="rotate(180,288,176)"/>
+<polygon class="arrowhead" points="296,64 284,58.4 284,69.6" fill="black" transform="rotate(180,288,64)"/>
+<polygon class="arrowhead" points="192,192 180,186.4 180,197.6" fill="black" transform="rotate(0,184,192)"/>
+<polygon class="arrowhead" points="192,80 180,74.4 180,85.6" fill="black" transform="rotate(0,184,80)"/>
+<g class="text">
+<text x="36" y="20">CoAP</text>
+<text x="244" y="20">CoAP</text>
+<text x="412" y="20">CoAP</text>
+<text x="48" y="36">clients</text>
+<text x="244" y="36">server</text>
+<text x="424" y="36">clients</text>
+<text x="328" y="52">observe</text>
+<text x="144" y="68">publish</text>
+<text x="56" y="84">publisher</text>
+<text x="428" y="84">subscriber</text>
+<text x="56" y="132">...</text>
+<text x="236" y="132">broker</text>
+<text x="424" y="132">...</text>
+<text x="56" y="148">...</text>
+<text x="424" y="148">...</text>
+<text x="328" y="164">observe</text>
+<text x="144" y="180">publish</text>
+<text x="56" y="196">publisher</text>
+<text x="428" y="196">subscriber</text>
+</g>
+</svg>
