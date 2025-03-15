@@ -2,32 +2,46 @@
 
 This is a simple CoAP broker implemented in Python using the [`aiocoap`](https://github.com/chrysn/aiocoap) library. The broker creates and manages resources for storing data by implementing various Resource classes provided by aiocoap. The script follows publish-subscribe architecture for the Constrained Application Protocol (CoAP) defined at [draft-ietf-core-coap-pubsub](https://datatracker.ietf.org/doc/draft-ietf-core-coap-pubsub/).
 
+![arch](./arch.svg)
+
+
 ## Requirements
 
-- Python 3.7 or higher
+- Python 3.12 or higher
 - `aiocoap` library
-
-## Installation
-
-You need to install the latest development version of aiocoap, which supports iPATCH.
+- `cbor2` library
+- `cbor-diag` requires Rust and Cargo
+- You need to install the latest development version of aiocoap, which supports iPATCH.
 
 ```sh
 pip3 install --upgrade "git+https://github.com/chrysn/aiocoap#egg=aiocoap[all]"
 ```
 
-## Usage
-
-Run the CoAP broker (I recommend `hupper` if you are developing in python):
+- I have an entry from the broker uri on `/etc/hosts` for demo purposes, you may want to have the same:
 
 ```sh
-hupper -m broker
+127.0.0.1	iot.dev
 ```
 
-The broker will start listening on 127.0.0.1:5683.
+## Usage
+
+Run the CoAP broker:
+
+```sh
+python3 broker.py
+```
+
+The broker will start listening on `127.0.0.1:5683`.
+
+You can use `poetry` to manage dependencies. Simply run `poetry install` to install all required packages, and then use `poetry run python3 broker.py` to start the broker.
 
 ### Create Topic
 
-Any client can create a topic-configuration as "admin":
+The broker hosts topic resources on which topic-data resources that clients can subscribe/publish to rest.
+
+![topics](./topics.svg)
+
+A client can create a topic as "admin":
 
 ```sh
 ./client.py -m POST coap://127.0.0.1:5683/ps --payload "{\"topic-name\": \"Room Temperature Sensor\", \"resource-type\": \"core.ps.conf\", \"media-type\": \"application/json\", \"topic-type\": \"temperature\", \"expiration-date\": \"2023-04-05T23:59:59Z\", \"max-subscribers\": 200, \"observer-check\": 86400}"
@@ -49,7 +63,7 @@ JSON re-formated and indented
 }
 ```
 
-The broker will create the resource paths for both the topic-configuration and topic-data resources.
+The broker will create the resource paths for both the topic and topic-data resources.
 
 ### Discover
 
@@ -57,7 +71,7 @@ Discover topics either via `.well-known/core` or by querying the collection reso
 
 You may discover the following resource types:
 - `core.ps.coll` - the topic collection resource.
-- `core.ps.conf` - the topic-configuration resource.
+- `core.ps.conf` - the topic resource.
 - `core.ps.data` - the topic-data resource.
 
 ```sh
@@ -103,9 +117,9 @@ application/link-format content was re-formatted
 </ps>; rt=core.ps.coll
 ```
 
-### Retrieve a topic-configuration
+### Retrieve a topic
 
-Any topic-configuration can be retrieved via its corresponding URI.
+Any topic can be retrieved via its corresponding URI.
 
 ```sh
 ./client.py -m GET 'coap://127.0.0.1/ps/e99889'
@@ -117,9 +131,9 @@ Any topic-configuration can be retrieved via its corresponding URI.
 
 From it, the associated topic-data can be interacted with providing it is FULLY created. For that a publisher needs to publish.
 
-### Update a topic-configuration with PUT
+### Update a topic with PUT
 
-Properties of a topic-configuration can be updated on its corresponding URI.
+Properties of a topic can be updated on its corresponding URI.
 
 ```sh
 ./client.py -m PUT coap://127.0.0.1:5683/ps/b616a3 --payload "{\"max-subscribers\": 200}"
@@ -140,9 +154,9 @@ JSON re-formated and indented
 }
 ```
 
-### Update a topic-configuration with iPATCH
+### Update a topic with iPATCH
 
-Properties of a topic-configuration can be updated on its corresponding URI.
+Properties of a topic can be updated on its corresponding URI.
 
 ```sh
 ./client.py -m iPATCH coap://127.0.0.1/ps/e99889 --payload "{\"max-subscribers\": 300}"
@@ -162,7 +176,7 @@ JSON re-formated and indented
 }
 ```
 
-### FETCH a topic-configurations by Properties
+### FETCH a topics by Properties
 
 A client can filter a collection of topics with a topic filter in a FETCH request to the topic collection URI.
 
@@ -208,7 +222,7 @@ Response arrived from different address; base URI is coap://127.0.0.1/ps/data/08
 The broker implements the following resource classes:
 
 - CollectionResource: The collection resource `/ps` for storing topics.
-- TopicResource: A resource for [topic-configurations](https://www.ietf.org/archive/id/draft-ietf-core-coap-pubsub-12.html#name-topic-properties-2).
+- TopicResource: A resource for [topics](https://www.ietf.org/archive/id/draft-ietf-core-coap-pubsub-12.html#name-topic-properties-2).
 - TopicDataResource: A resource for topic-data and for the [publish-subscribe interactions](https://www.ietf.org/archive/id/draft-ietf-core-coap-pubsub-12.html#name-topic-data-interactions-2) over CoAP.
 
 ## Supported operations
