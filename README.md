@@ -23,9 +23,15 @@ Run the CoAP broker:
 python3 broker.py
 ```
 
-The broker will start listening on `127.0.0.1:5683`.
+The broker will start listening on `127.0.0.1:5683`, which you may want to update on your `etc/hosts` to something like `iot.dev` or similar.
 
-You can use `poetry` to manage dependencies. Simply run `poetry install` to install all required packages, and then use `poetry run python3 broker.py` to start the broker.
+You could use `poetry` to manage dependencies. Simply run `poetry install` to install all required packages, and then use `poetry run python3 broker.py` to start the broker.
+
+You may then run the simple demo and follow the instructions.
+
+```sh
+sh simple-demo.sh iot.dev
+```
 
 ### Creating Topics
 
