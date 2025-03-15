@@ -1,8 +1,6 @@
 #!/usr/bin/env python3
 
-# aiocoap is implemented by Christian Amsüss <c.amsuess@energyharvesting.at>
-# This simple broker script is implemented by Jaime Jiménez, it implements
-# https://datatracker.ietf.org/doc/html/draft-ietf-core-coap-pubsub-12
+# aiocoap, developed by Christian Amsüss, is utilized in this broker script by Jaime Jiménez, adhering to the CoAP PubSub protocol (draft-ietf-core-coap-pubsub-18).
 
 import logging
 import json
