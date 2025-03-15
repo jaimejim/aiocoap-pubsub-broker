@@ -191,17 +191,17 @@ application/link-format content was re-formatted
 <ps/e99889>; rt=core.ps.conf
 ```
 
-## Publish and subscribe operations
+## Publish and subscribe on topic-data
 
-Publishers use PUT to send data to a topic-data resource. Subscribers use GET with Observe set to 0 to receive updates. A topic-data resource is created only after initial data is published. Before that, GET requests return 4.04 (Not Found). URIs for topic resources are broker-generated.
+As we mentioned above, *topic* and *topic-data* are different resources, topic is to configure the topic behaviour and topic-data is to perform the publish and subscribe operations.
 
+Publishers use PUT to send data to a topic-data resource which is part of a topic. Subscribers use GET with Observe set to 0 to receive updates. A topic-data resource is created only after initial data is published. Before that, GET requests return 4.04 (Not Found). In this implementation URIs for topic resources are broker-generated, but they could also be hosted elsewhere.
 
 ![arch](./arch.svg)
 
-
 ### Publish
 
-A CoAP client can act as publisher by sending a CoAP PUT to a topic-data resource. This initializes the resource into [FULLY CREATED](https://www.ietf.org/archive/id/draft-ietf-core-coap-pubsub-12.html#name-topic-lifecycle-2) state:
+A CoAP client can act as publisher by sending a CoAP PUT to a topic-data resource.
 
 ```sh
 poetry run python3 client.py -m PUT coap://127.0.0.1:5683/ps/data/08dd75d --payload '{
@@ -219,7 +219,7 @@ Response arrived from different address; base URI is coap://127.0.0.1/ps/data/08
 
 ### Subscribe
 
-Subscribe to a topic by using CoAP Observe:
+Subscribe to a topic by using CoAP `GET` with `--observe` option on the topic-data:
 
 ```sh
 poetry run python3 client.py -m GET --observe coap://127.0.0.1:5683/ps/data/08dd75d
