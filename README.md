@@ -1,275 +1,251 @@
 # aiocoap-pubsub-broker
 
-This is a simple CoAP broker implemented in Python using the [`aiocoap`](https://github.com/chrysn/aiocoap) library. The broker creates and manages resources for storing data by implementing various Resource classes provided by aiocoap. The script follows publish-subscribe architecture for the Constrained Application Protocol (CoAP) defined at [draft-ietf-core-coap-pubsub](https://datatracker.ietf.org/doc/draft-ietf-core-coap-pubsub/).
+A CoAP Publish-Subscribe broker implementing [draft-ietf-core-coap-pubsub-19](https://datatracker.ietf.org/doc/draft-ietf-core-coap-pubsub/), built on the [`aiocoap`](https://github.com/chrysn/aiocoap) library.
 
+Topics are CBOR-encoded resources (application/core-pubsub+cbor). JSON is accepted as a fallback for tools that don't speak CBOR.
+
+![architecture](./arch.svg)
 
 ## Requirements
 
-- Python 3.12 or higher
-- `aiocoap` library
-- `cbor2` library
-- `cbor-diag` requires Rust and Cargo
-- You need to install the latest development version of aiocoap, which supports iPATCH.
+- Python 3.12+
+- [`uv`](https://docs.astral.sh/uv/)
+
+## Installation
 
 ```sh
-pip3 install --upgrade "git+https://github.com/chrysn/aiocoap#egg=aiocoap[all]"
+git clone https://github.com/your-org/aiocoap-pubsub-broker
+cd aiocoap-pubsub-broker
+uv sync
 ```
 
-## Usage
+This installs two commands into the project virtual environment:
 
-Run the CoAP broker:
+| Command | Description |
+|---------|-------------|
+| `pubsub-broker` | Runs the CoAP pubsub broker |
+| `pubsub-client` | Client CLI for all pubsub operations |
+
+To install the commands globally:
 
 ```sh
-python3 broker.py
+uv tool install .
 ```
 
-The broker will start listening on `127.0.0.1:5683`, which you may want to update on your `etc/hosts` to something like `iot.dev` or similar.
-
-You could use `poetry` to manage dependencies. Simply run `poetry install` to install all required packages, and then use `poetry run python3 broker.py` to start the broker.
-
-You may then run the simple demo and follow the instructions.
+## Running the broker
 
 ```sh
-sh simple-demo.sh iot.dev
+uv run pubsub-broker                         # localhost:5683
+uv run pubsub-broker --host 0.0.0.0          # listen on all interfaces
+uv run pubsub-broker --host 0.0.0.0 --port 5684
 ```
 
-### Creating Topics
+## Topic structure
 
-A CoAP server exposes a collection of topics as resources, each with a topic resource for administration and a topic-data resource for publishing and subscribing.
+A topic collection lives at `/ps`. Each topic has two associated resources:
 
-![topics](./topics.svg)
+| Resource | Path | Type |
+|----------|------|------|
+| Collection | `/ps` | `core.ps.coll` |
+| Topic config | `/ps/<id>` | `core.ps.conf` |
+| Topic data | `/ps/data/<id>` | `core.ps.data` |
 
-A client can create a topic as "admin":
+Topics have a lifecycle:
+- **HALF CREATED** — topic config exists but no data has been published yet (GET on topic-data returns 4.04)
+- **FULLY CREATED** — data has been published at least once (subscribers receive 2.05 with Observe)
+
+## Topic properties (CBOR numeric keys)
+
+| Property | CBOR key | Type | Description |
+|----------|----------|------|-------------|
+| `topic-name` | 0 | string | Human-readable identifier (immutable) |
+| `topic-data` | 1 | string | URI of topic-data resource (immutable) |
+| `resource-type` | 2 | string | Always `core.ps.conf` (immutable) |
+| `topic-content-format` | 3 | uint | CoAP content-format of published data |
+| `topic-type` | 4 | string | Application-level type (e.g. `temperature`) |
+| `expiration-date` | 5 | CBOR tag 1 | Epoch-based expiry (RFC 8949) |
+| `max-subscribers` | 6 | uint | Maximum concurrent subscribers |
+| `observer-check` | 7 | uint | Max seconds between confirmable notifications (default: 86400) |
+| `initialize` | 8 | bytes | Initial payload — pre-populates topic-data at creation time |
+
+---
+
+## Client usage
 
 ```sh
-poetry run python3 client.py -m POST coap://127.0.0.1:5683/ps --payload '{
-    "topic-name": "Room Temperature Sensor",
-    "resource-type": "core.ps.conf",
-    "media-type": "application/json",
-    "topic-type": "temperature",
-    "expiration-date": "2023-04-05T23:59:59Z",
-    "max-subscribers": 200,
-    "observer-check": 86400
-}'
+uv run pubsub-client --help
 ```
 
-The broker will show:
+### Create a topic
 
-```js
-Response arrived from different address; base URI is coap://127.0.0.1/ps
-Location options indicate new resource: /ps/e99889
-JSON re-formated and indented
+```sh
+uv run pubsub-client create coap://localhost temperature \
+    --type sensor --format 60 --max-subs 10
+```
+
+Create with initial data (topic enters FULLY CREATED immediately):
+
+```sh
+uv run pubsub-client create coap://localhost humidity \
+    --type sensor --init '{"v":55.2}'
+```
+
+Response (CBOR decoded):
+```json
 {
-    "topic-name": "Room Temperature Sensor",
-    "topic-data": "ps/data/08dd75d",
-    "resource-type": "core.ps.conf",
-    "media-type": "application/json",
-    "topic-type": "temperature",
-    "expiration-date": "2023-04-05T23:59:59Z",
-    "max-subscribers": 200,
-    "observer-check": 86400
+  "topic-name": "temperature",
+  "topic-data": "ps/data/a3f1b2",
+  "resource-type": "core.ps.conf",
+  "topic-type": "sensor",
+  "topic-content-format": 60,
+  "max-subscribers": 10,
+  "observer-check": 86400
 }
 ```
 
-The broker will create the resource paths for both the topic and topic-data (`ps/data/08dd75d`) resources.
-
-### Discovering topics
-
-Discover topics either via `.well-known/core` or by querying the collection resource `ps`.
-
-You may discover the following resource types:
-- `core.ps.coll` - the topic collection resource.
-- `core.ps.conf` - the topic resource.
-- `core.ps.data` - the topic-data resource.
+### List topics
 
 ```sh
-❯ poetry run python3 client.py -m GET coap://127.0.0.1/ps
-<ps/4fb3de>;rt="core.ps.conf"
+uv run pubsub-client list coap://localhost
+# </ps/3a1b2c>;rt="core.ps.conf",</ps/4d5e6f>;rt="core.ps.conf"
 ```
 
-or
+### Discover via .well-known/core
 
 ```sh
-poetry run python3 client.py -m GET coap://127.0.0.1/.well-known/core
+uv run pubsub-client read coap://localhost/.well-known/core
 ```
 
-```js
-application/link-format content was re-formatted
-</.well-known/core>; ct=40,
-</ps>; rt=core.ps.coll,
-</ps/4fb3de>; ct=application/link-format; rt=core.ps.conf; obs,
-</ps/data/a08b18d>; rt=core.ps.data; obs,
-<https://christian.amsuess.com/tools/aiocoap/#version-0.4.4.post0>; rel=impl-info
-```
-
-or by `rt`
+Filter by resource type:
 
 ```sh
-poetry run python3 client.py -m GET 'coap://127.0.0.1/.well-known/core?rt=core.ps.conf'
+uv run pubsub-client read 'coap://localhost/.well-known/core?rt=core.ps.conf'
 ```
 
-```js
-application/link-format content was re-formatted
-</ps/dd4494>; ct=None; rt=core.ps.conf; obs,
-</ps/cdc49a>; ct=application/json; rt=core.ps.conf; obs
-```
-
-or
+### Read topic configuration
 
 ```sh
-poetry run python3 client.py -m GET 'coap://127.0.0.1/.well-known/core?rt=core.ps.coll'
+uv run pubsub-client read coap://localhost/ps/3a1b2c
 ```
 
-```js
-application/link-format content was re-formatted
-</ps>; rt=core.ps.coll
-```
-
-### Retrieve a topic
-
-Any topic can be retrieved via its corresponding URI.
+### FETCH — filter topics by property
 
 ```sh
-poetry run python3 client.py -m GET 'coap://127.0.0.1/ps/e99889'
+uv run pubsub-client fetch coap://localhost --filter topic-name,topic-type
 ```
 
-```js
-{"topic-name": "Room Temperature Sensor", "topic-data": "ps/data/08dd75d", "resource-type": "core.ps.conf", "media-type": "application/json", "topic-type": "temperature", "expiration-date": "2023-04-05T23:59:59Z", "max-subscribers": 200, "observer-check": 86400}
-```
-
-From it, the associated topic-data can be interacted with providing it is FULLY created. For that a publisher needs to publish.
-
-### Update a topic with PUT
-
-Properties of a topic can be updated on its corresponding URI.
+### Full config replacement (POST)
 
 ```sh
-poetry run python3 client.py -m PUT coap://127.0.0.1:5683/ps/b616a3 --payload "{\"max-subscribers\": 200}"
+uv run pubsub-client update coap://localhost coap://localhost/ps/3a1b2c \
+    max-subscribers=50 observer-check=3600
 ```
 
-```js
-Response arrived from different address; base URI is coap://127.0.0.1/ps/b616a3
-JSON re-formated and indented
-{
-    "topic-name": "Room Temperature Sensor",
-    "topic-data": "ps/data/957d7fd",
-    "resource-type": "core.ps.conf",
-    "media-type": "application/json",
-    "topic-type": "temperature",
-    "expiration-date": "2023-04-05T23:59:59Z",
-    "max-subscribers": 200,
-    "observer-check": 86400
-}
-```
-
-### Update a topic with iPATCH
-
-Properties of a topic can be updated on its corresponding URI.
+### Partial update (iPATCH)
 
 ```sh
-poetry run python3 client.py -m iPATCH coap://127.0.0.1/ps/e99889 --payload "{\"max-subscribers\": 300}"
+uv run pubsub-client patch coap://localhost coap://localhost/ps/3a1b2c \
+    observer-check=7200
 ```
 
-```js
-JSON re-formated and indented
-{
-    "topic-name": "Room Temperature Sensor",
-    "topic-data": "ps/data/08dd75d",
-    "resource-type": "core.ps.conf",
-    "media-type": "application/json",
-    "topic-type": "temperature",
-    "expiration-date": "2023-04-05T23:59:59Z",
-    "max-subscribers": 300,
-    "observer-check": 86400
-}
-```
+### Delete topic
 
-### FETCH a topics by Properties
-
-A client can filter a collection of topics with a topic filter in a FETCH request to the topic collection URI.
+Deletes the topic config and its associated topic-data resource. Active subscribers receive 4.04.
 
 ```sh
-poetry run python3 client.py -m FETCH 'coap://127.0.0.1/ps' --content-format 'application/cbor' --payload '{"max-subscribers": 300}'
+uv run pubsub-client delete coap://localhost coap://localhost/ps/3a1b2c
 ```
 
-```js
-application/link-format content was re-formatted
-<ps/e99889>; rt=core.ps.conf
-```
+---
 
-## Publish and subscribe on topic-data
-
-As we mentioned above, *topic* and *topic-data* are different resources, topic is to configure the topic behaviour and topic-data is to perform the publish and subscribe operations.
-
-Publishers use PUT to send data to a topic-data resource which is part of a topic. Subscribers use GET with Observe set to 0 to receive updates. A topic-data resource is created only after initial data is published. Before that, GET requests return 4.04 (Not Found). In this implementation URIs for topic resources are broker-generated, but they could also be hosted elsewhere.
-
-![arch](./arch.svg)
+## Publish and subscribe
 
 ### Publish
 
-A CoAP client can act as publisher by sending a CoAP PUT to a topic-data resource.
+```sh
+uv run pubsub-client publish coap://localhost/ps/data/a3f1b2 '{"v":22.5}'
+# 2.04 Changed
+```
+
+First publication returns 2.01 Created and transitions the topic to FULLY CREATED.
+
+### Read latest value
 
 ```sh
-poetry run python3 client.py -m PUT coap://127.0.0.1:5683/ps/data/08dd75d --payload '{
-    "n": "temperature",
-    "u": "Cel",
-    "t": 1621452122,
-    "v": 21.3
-}'
+uv run pubsub-client read coap://localhost/ps/data/a3f1b2
+# {"v":22.5}
 ```
 
-```js
-Response arrived from different address; base URI is coap://127.0.0.1/ps/data/08dd75d
-{n: temperature,u: Cel,t: 1621452122,v: 21.3}
-```
-
-### Subscribe
-
-Subscribe to a topic by using CoAP `GET` with `--observe` option on the topic-data:
+### Subscribe (Observe)
 
 ```sh
-poetry run python3 client.py -m GET --observe coap://127.0.0.1:5683/ps/data/08dd75d
+uv run pubsub-client sub coap://localhost/ps/data/a3f1b2
+# [subscribe] {"v":22.5}
+# [update]    {"v":23.1}
+# ^C
 ```
 
-```js
-Response arrived from different address; base URI is coap://127.0.0.1/ps/data/08dd75d
-{n: temperature,u: Cel,t: 1621452122,v: 21.3}
+If `max-subscribers` is reached, the broker responds without the Observe option — the client sees `Subscription rejected`.
+
+### Delete topic-data
+
+Reverts the topic to HALF CREATED. Active subscribers receive 4.04.
+
+```sh
+uv run pubsub-client delete coap://localhost coap://localhost/ps/data/a3f1b2
+```
+
 ---
-{n: temperature,u: Cel,t: 1621452122,v: 21.3}
+
+## Interactive demo
+
+Runs a full walkthrough of all protocol operations against a running broker:
+
+```sh
+uv run pubsub-broker &
+uv run pubsub-client demo coap://localhost
 ```
 
-## Resource Classes
+---
 
-The broker implements the following resource classes:
+## Resource types
 
-- CollectionResource: The collection resource `/ps` for storing topics.
-- TopicResource: A resource for [topics](https://www.ietf.org/archive/id/draft-ietf-core-coap-pubsub-12.html#name-topic-properties-2).
-- TopicDataResource: A resource for topic-data and for the [publish-subscribe interactions](https://www.ietf.org/archive/id/draft-ietf-core-coap-pubsub-12.html#name-topic-data-interactions-2) over CoAP.
+| Type | Meaning |
+|------|---------|
+| `core.ps` | Publish-subscribe broker |
+| `core.ps.coll` | Topic collection |
+| `core.ps.conf` | Topic resource (configuration) |
+| `core.ps.data` | Topic-data resource |
 
-## Supported operations
+---
+
+## Supported operations (draft-19)
 
 - Discovery
-  - [x] GET /.well-known/core to discover collection
-    - [x] Well known discovery with rt
-    - [x] Topic Collection discovery
-    - [x] Update to current list of Topic Properties on draft
-    - [x] GET topic to discover topic configuration
-    - [x] GET /ps to retrieve all topics
-    - [x] FETCH
-    - [ ] multicast
-- Configuration
-    - [x] POST topic to create topic
-    - [x] PUT to update topic configuration
-    - [x] iPATCH to partially update topic configuration
-    - [x] DELETE topic to delete topic
-    - [ ] Client defined topic-data url
-- Topic Data
-    - [x] PUT on topic-data to publish
-    - [x] GET + observe on topic-data to Subscribe
-    - [x] GET on topic-data to get last measurement
-    - [ ] Delete to delete topic-data
-- Other
-    - [ ] Improve Broker Logic
-    - [ ] Fix Scripts 
+  - [x] `GET /.well-known/core` with `rt` filtering
+  - [x] `GET /ps` to list all topics
+  - [x] `FETCH /ps` with `conf-filter` property filtering
+  - [ ] Multicast discovery
+- Topic configuration
+  - [x] `POST /ps` — create topic
+  - [x] `POST /ps/<id>` — full config replacement
+  - [x] `iPATCH /ps/<id>` — partial config update
+  - [x] `DELETE /ps/<id>` — delete topic (cascades to topic-data)
+  - [x] `initialize` property — pre-populate topic-data at creation
+  - [x] Client-provided `topic-data` URI
+- Topic data
+  - [x] `PUT` on topic-data — publish (2.01 Created first time, 2.04 Changed after)
+  - [x] `GET + Observe=0` on topic-data — subscribe
+  - [x] `GET` on topic-data — read latest value
+  - [x] `DELETE` on topic-data — revert to HALF CREATED
+  - [x] `max-subscribers` enforcement (subscribe rejected without Observe option)
+- Encoding
+  - [x] `application/core-pubsub+cbor` (CT 606) with numeric CBOR keys
+  - [x] JSON fallback accepted on input
+  - [x] CBOR tag 1 for `expiration-date` (RFC 8949 epoch)
 
-Disclaimer: There is lots of hardcoded stuff, as this was quickly developed during the IETF116 nad IETF118 hackathons.
+---
+
+## Architecture
+
+Built on [`aiocoap`](https://github.com/chrysn/aiocoap) by Christian Amsüss. Broker and client developed by Jaime Jiménez during IETF hackathons and updated to draft-19.
