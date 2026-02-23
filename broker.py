@@ -1,353 +1,389 @@
 #!/usr/bin/env python3
 
-# aiocoap, developed by Christian Amsüss, is utilized in this broker script by Jaime Jiménez, adhering to the CoAP PubSub protocol (draft-ietf-core-coap-pubsub-18).
+# CoAP Publish-Subscribe Broker — draft-ietf-core-coap-pubsub-19
+# Jaime Jiménez <jaimejim@gmail.com>
+# Built on aiocoap by Christian Amsüss
 
-import logging
-import json
+import argparse
 import asyncio
-import aiocoap.resource as resource
-import aiocoap
+import logging
 import secrets
+
+import aiocoap
+import aiocoap.resource as resource
 import cbor2
-from aiocoap import Message, BAD_REQUEST
-from aiocoap.numbers import ContentFormat
+from aiocoap import Message
+
+# ---------------------------------------------------------------------------
+# CBOR key mapping — draft-ietf-core-coap-pubsub-19 §5
+# ---------------------------------------------------------------------------
+
+TOPIC_KEYS: dict[str, int] = {
+    "topic-name":           0,
+    "topic-data":           1,
+    "resource-type":        2,
+    "topic-content-format": 3,
+    "topic-type":           4,
+    "expiration-date":      5,   # CBOR tag 1 (epoch-based, RFC 8949)
+    "max-subscribers":      6,
+    "observer-check":       7,
+    "initialize":           8,   # bstr — pre-populates topic-data on creation
+    "conf-filter":          10,  # array of uint keys, used in FETCH requests
+}
+TOPIC_KEYS_REV: dict[int, str] = {v: k for k, v in TOPIC_KEYS.items()}
+
+# application/core-pubsub+cbor — TBD606 (placeholder until IANA assigns)
+CT_PUBSUB_CBOR = 606
+CT_JSON = 50  # application/json
+CT_LINK_FORMAT = 40  # application/link-format
+
+IMMUTABLE_FIELDS = {"topic-name", "topic-data", "resource-type"}
 
 
-# Define a collection resource for storing topics
+# ---------------------------------------------------------------------------
+# Codec helpers
+# ---------------------------------------------------------------------------
+
+def decode_topic_payload(payload: bytes, content_format: int | None) -> dict:
+    """Parse a topic configuration payload.
+
+    Accepts:
+    - application/core-pubsub+cbor (CT_PUBSUB_CBOR): CBOR with numeric keys
+    - application/json (CT_JSON) or unknown: JSON with string keys (fallback)
+
+    Always returns a Python dict with *string* keys for internal use.
+    """
+    if content_format == CT_PUBSUB_CBOR:
+        raw = cbor2.loads(payload)
+        result = {}
+        for k, v in raw.items():
+            name = TOPIC_KEYS_REV.get(k, str(k))
+            if name == "expiration-date" and isinstance(v, cbor2.CBORTag) and v.tag == 1:
+                v = v.value
+            result[name] = v
+        return result
+    else:
+        import json
+        return json.loads(payload)
+
+
+def encode_topic_config(d: dict) -> bytes:
+    """Encode a topic configuration dict to CBOR with numeric keys."""
+    cbor_map = {}
+    for name, value in d.items():
+        if value is None:
+            continue
+        key = TOPIC_KEYS.get(name)
+        if key is None:
+            continue
+        if name == "expiration-date":
+            value = cbor2.CBORTag(1, int(value))
+        cbor_map[key] = value
+    return cbor2.dumps(cbor_map)
+
+
+# ---------------------------------------------------------------------------
+# CollectionResource  (/ps)
+# ---------------------------------------------------------------------------
+
 class CollectionResource(resource.Resource):
 
-    # Constructor method
     def __init__(self, root):
         super().__init__()
-        self.handle = None
-        self.content = ""
         self.root = root
-
-        # Set the content type and resource type attributes
         self.rt = "core.ps.coll"
+        self._links: list[str] = []   # list of link strings
 
-    # Method for setting content of the resource
-    def set_content(self, content):
-        self.content = content
-        self.updated_state()
-
-    def get_topic_resources(self):
-        """Return a dictionary of TopicResource instances in the site."""
+    def get_topic_resources(self) -> dict:
         return {
-            path: resource
-            for path, resource in self.root._resources.items()
-            if isinstance(resource, TopicResource)
+            path: res
+            for path, res in self.root._resources.items()
+            if isinstance(res, TopicResource)
         }
 
-    def remove_resource(self, path):
-        link = f'<{path}>;rt="core.ps.conf"'
-        self.content = self.content.replace(link, "")
-        if ",," in self.content:
-            self.content = self.content.replace(",,", ",")
-        if self.content.startswith(","):
-            self.content = self.content[1:]
-        if self.content.endswith(","):
-            self.content = self.content[:-1]
+    def add_link(self, path: str) -> None:
+        link = f'</{path}>;rt="core.ps.conf"'
+        if link not in self._links:
+            self._links.append(link)
 
-    # Method for handling POST requests
+    def remove_link(self, path: str) -> None:
+        link = f'</{path}>;rt="core.ps.conf"'
+        self._links = [l for l in self._links if l != link]
+
+    @property
+    def _link_payload(self) -> bytes:
+        return ",".join(self._links).encode("utf-8")
+
     async def render_post(self, request):
-        print("POST payload: %s" % request.payload)
-        data = json.loads(request.payload)
+        ct = request.opt.content_format
+        try:
+            data = decode_topic_payload(request.payload, ct)
+        except Exception as e:
+            return Message(code=aiocoap.BAD_REQUEST, payload=str(e).encode())
 
-        # Check if client provided a topic data path
-        if "topic-data" in data:
-            topic_data_path = data["topic-data"]
-        else:
-            topic_data_path = f"ps/data/{secrets.token_hex(3)}d"
+        if "topic-name" not in data:
+            return Message(code=aiocoap.BAD_REQUEST, payload=b"topic-name required")
 
+        # Build topic-data URI
+        topic_data_path = data.get("topic-data") or f"ps/data/{secrets.token_hex(3)}"
         topic_config_path = f"ps/{secrets.token_hex(3)}"
-        config_path_segments = topic_config_path.split("/")
-        data_path_segments = topic_data_path.split("/")
 
-        topic_config_json = {
-            "topic-name": data["topic-name"],
-            "topic-data": topic_data_path,
-            "resource-type": "core.ps.conf",
-            "media-type": data.get(
-                "media-type", None
-            ),  # default is None if not provided
-            "topic-type": data.get(
-                "topic-type", None
-            ),  # default is None if not provided
-            "expiration-date": data.get(
-                "expiration-date", None
-            ),  # default is None if not provided
-            "max-subscribers": data.get(
-                "max-subscribers", None
-            ),  # default is None if not provided
-            "observer-check": data.get(
-                "observer-check", 86400
-            ),  # default is 86400 if not provided
+        # Assemble config (draft-19 §5.2.1)
+        config: dict = {
+            "topic-name":           data["topic-name"],
+            "topic-data":           topic_data_path,
+            "resource-type":        "core.ps.conf",
+            "topic-content-format": data.get("topic-content-format"),
+            "topic-type":           data.get("topic-type"),
+            "expiration-date":      data.get("expiration-date"),
+            "max-subscribers":      data.get("max-subscribers"),
+            "observer-check":       data.get("observer-check", 86400),
         }
+
+        topic_data_res = TopicDataResource(
+            max_subscribers=config.get("max-subscribers"),
+        )
+
+        # Handle `initialize` — pre-populate topic-data (§5.2.1)
+        init_payload = data.get("initialize")
+        if init_payload is not None:
+            if isinstance(init_payload, bytes):
+                topic_data_res.set_content(init_payload)
+            else:
+                topic_data_res.set_content(str(init_payload).encode())
 
         self.root.add_resource(
-            config_path_segments,
-            TopicResource(topic_config_json, self.root, config_path_segments),
+            topic_config_path.split("/"),
+            TopicResource(config, self.root, topic_config_path.split("/")),
         )
-        self.root.add_resource(data_path_segments, TopicDataResource())
+        self.root.add_resource(
+            topic_data_path.split("/"),
+            topic_data_res,
+        )
 
-        # TODO: Add more rt= with media-type, topic-type etc.
-        new_link = f'<{topic_config_path}>;rt="core.ps.conf"'
-        if self.content:
-            self.content += "," + new_link
-        else:
-            self.content = new_link
+        self.add_link(topic_config_path)
 
-        json_payload_bytes = json.dumps(topic_config_json).encode("utf-8")
-        response = aiocoap.Message(code=aiocoap.CREATED, payload=json_payload_bytes)
+        response = Message(
+            code=aiocoap.CREATED,
+            payload=encode_topic_config(config),
+        )
         response.opt.location_path = topic_config_path.split("/")
-        response.opt.content_format = aiocoap.numbers.media_types_rev[
-            "application/json"
-        ]
-
+        response.opt.content_format = CT_PUBSUB_CBOR
         return response
 
-    # Method for handling GET requests
     async def render_get(self, request):
-        response = aiocoap.Message(payload=self.content.encode("UTF-8"))
-        response.opt.content_format = aiocoap.numbers.media_types_rev[
-            "application/link-format"
-        ]
+        response = Message(payload=self._link_payload)
+        response.opt.content_format = CT_LINK_FORMAT
         return response
 
-    # Method for handling FETCH requests
     async def render_fetch(self, request):
         try:
-            print("FETCH payload: %s" % request.payload)
-
-            # Decode the request payload and convert it from CBOR to JSON
-            request_data = cbor2.loads(request.payload)
-
-            # Create a list to store the links to the resources that match the filter
-            matching_links = []
-
-            # Get the TopicResource instances in the site
-            topic_resources = self.get_topic_resources()
-
-            # Check each TopicResource
-            for path, resource in topic_resources.items():
-                path_str = "/".join(path)
-                # Print the resource and its content
-                content = json.loads(resource.content.decode("utf-8"))
-                print(f"Resource: {path_str}, Content: {content}")
-                # Check if the resource matches the filter
-                if resource.matches(request_data):
-                    # Add the link to the matching resource to the list
-                    matching_links.append(f'<{path_str}>;rt="core.ps.conf"')
-
-            # Convert the list of links to a string
-            payload = ",".join(matching_links)
-
-            # Debug print statement
-            print("Matching links:", matching_links)
-
-            # Create the response message
-            response = Message(code=aiocoap.CONTENT, payload=payload.encode("utf-8"))
-            response.opt.content_format = 40
-
-            return response
-
+            raw = cbor2.loads(request.payload)
         except Exception as e:
-            # If there's an error, return a 4.00 Bad Request response
-            return Message(code=BAD_REQUEST, payload=str(e).encode("utf-8"))
+            return Message(code=aiocoap.BAD_REQUEST, payload=str(e).encode())
+
+        # conf-filter (key 10): list of numeric property keys to match on
+        filter_keys_raw = raw.get(TOPIC_KEYS["conf-filter"], [])
+        # Also accept a plain map of key→value pairs for value-based filtering
+        filter_map: dict[str, object] = {}
+        if isinstance(filter_keys_raw, list):
+            filter_names = [TOPIC_KEYS_REV.get(k, str(k)) for k in filter_keys_raw]
+        else:
+            # Treat as {numeric_key: value} map
+            filter_map = {
+                TOPIC_KEYS_REV.get(k, str(k)): v for k, v in raw.items()
+                if k != TOPIC_KEYS["conf-filter"]
+            }
+            filter_names = list(filter_map.keys())
+
+        matching: list[str] = []
+        for path, res in self.get_topic_resources().items():
+            path_str = "/".join(path)
+            config = res.config
+            if all(name in config for name in filter_names):
+                if all(
+                    str(config.get(n)) == str(v) for n, v in filter_map.items()
+                ):
+                    matching.append(f'</{path_str}>;rt="core.ps.conf"')
+
+        payload = ",".join(matching).encode("utf-8")
+        response = Message(code=aiocoap.CONTENT, payload=payload)
+        response.opt.content_format = CT_LINK_FORMAT
+        return response
 
 
-# Define a resource class for topic configurations
+# ---------------------------------------------------------------------------
+# TopicResource  (/ps/<id>)
+# ---------------------------------------------------------------------------
+
 class TopicResource(resource.ObservableResource):
 
-    def __init__(self, content, site, path):
+    def __init__(self, config: dict, site, path: list[str]):
         super().__init__()
-        self.handle = None
-        self.content = json.dumps(content).encode("utf-8")
-        self.ct = content.get(
-            "media-type", "application/link-format"
-        )  # default is 'application/link-format' if not provided
-        self.rt = "core.ps.conf"
+        self.config = {k: v for k, v in config.items() if v is not None}
         self.site = site
         self.path = path
+        self.rt = "core.ps.conf"
 
-    def matches(self, filter):
-        # Load the content of the resource as a JSON object
-        content = json.loads(self.content.decode("utf-8"))
+    async def render_get(self, request):
+        response = Message(
+            payload=encode_topic_config(self.config),
+        )
+        response.opt.content_format = CT_PUBSUB_CBOR
+        return response
 
-        print("Content:", content)  # Debug print statement
+    async def render_post(self, request):
+        """Full configuration replacement (draft-19 §5.3.1, replaces PUT)."""
+        ct = request.opt.content_format
+        try:
+            data = decode_topic_payload(request.payload, ct)
+        except Exception as e:
+            return Message(code=aiocoap.BAD_REQUEST, payload=str(e).encode())
 
-        # Check each key-value pair in the filter
-        for key, value in filter.items():
-            # If the key is not in the resource's content or the values don't match, return False
-            if key not in content:
-                print(f"Key {key} not found in content")  # Debug print statement
-                return False
-            elif str(content[key]) != str(value):
-                print(
-                    f"Mismatch: key {key}, content value {content[key]}, filter value {value}"
-                )  # Debug print statement
-                return False
+        # Immutable fields cannot be changed after creation
+        if any(f in data for f in IMMUTABLE_FIELDS):
+            return Message(
+                code=aiocoap.BAD_REQUEST,
+                payload=b"topic-name, topic-data, resource-type are immutable",
+            )
 
-        print("Match:", content)  # Debug print statement
-        # If all key-value pairs in the filter match, return True
-        return True
+        mutable = {"topic-content-format", "topic-type", "expiration-date",
+                   "max-subscribers", "observer-check"}
+        for field in mutable:
+            if field in data:
+                self.config[field] = data[field]
 
-    # Method for setting content of the resource
-    def set_content(self, content):
-        self.content = content
         self.updated_state()
-
-    async def render_put(self, request):
-        print("PUT payload: %s" % request.payload)
-        data = json.loads(request.payload)
-
-        # Check if the immutable parameters are being changed
-        if "topic-name" in data or "topic-data" in data or "resource-type" in data:
-            return aiocoap.Message(code=aiocoap.BAD_REQUEST)
-
-        # Update the content of the TopicResource
-        content_dict = json.loads(self.content.decode("utf-8"))
-
-        if "media-type" in data:
-            content_dict["media-type"] = data["media-type"]
-
-        if "topic-type" in data:
-            content_dict["topic-type"] = data["topic-type"]
-
-        if "expiration-date" in data:
-            content_dict["expiration-date"] = data["expiration-date"]
-
-        if "max-subscribers" in data:
-            content_dict["max-subscribers"] = data["max-subscribers"]
-
-        self.content = json.dumps(content_dict).encode("utf-8")
-
-        # Create the response message
-        response = aiocoap.Message(code=aiocoap.CHANGED, payload=self.content)
-        response.opt.content_format = aiocoap.numbers.media_types_rev[
-            "application/json"
-        ]
-
+        response = Message(code=aiocoap.CHANGED, payload=encode_topic_config(self.config))
+        response.opt.content_format = CT_PUBSUB_CBOR
         return response
 
     async def render_ipatch(self, request):
+        """Partial update (RFC 8473 incremental PATCH)."""
+        ct = request.opt.content_format
         try:
-            print("iPATCH payload: %s" % request.payload)
-            data = json.loads(request.payload)
-        except json.JSONDecodeError:
-            return aiocoap.Message(code=aiocoap.BAD_REQUEST)
+            data = decode_topic_payload(request.payload, ct)
+        except Exception as e:
+            return Message(code=aiocoap.BAD_REQUEST, payload=str(e).encode())
 
-        # Check if the immutable parameters are being changed
-        immutable_params = ["topic-name", "topic-data", "resource-type"]
-        if any(param in data for param in immutable_params):
-            return aiocoap.Message(code=aiocoap.BAD_REQUEST)
+        if any(f in data for f in IMMUTABLE_FIELDS):
+            return Message(
+                code=aiocoap.BAD_REQUEST,
+                payload=b"topic-name, topic-data, resource-type are immutable",
+            )
 
-        # Update the content of the TopicResource
-        try:
-            content_dict = json.loads(self.content.decode("utf-8"))
-        except json.JSONDecodeError:
-            return aiocoap.Message(code=aiocoap.INTERNAL_SERVER_ERROR)
-
-        # Update only the fields that are present in the request
-        for field in data:
-            if field in content_dict:
-                content_dict[field] = data[field]
+        for field, value in data.items():
+            if field in self.config:
+                self.config[field] = value
             else:
-                return aiocoap.Message(code=aiocoap.NOT_FOUND)
+                return Message(code=aiocoap.NOT_FOUND,
+                               payload=f"unknown field: {field}".encode())
 
-        self.content = json.dumps(content_dict).encode("utf-8")
-
-        # Create the response message
-        response = aiocoap.Message(code=aiocoap.CHANGED, payload=self.content)
-        response.opt.content_format = aiocoap.numbers.media_types_rev[
-            "application/json"
-        ]
-
+        self.updated_state()
+        response = Message(code=aiocoap.CHANGED, payload=encode_topic_config(self.config))
+        response.opt.content_format = CT_PUBSUB_CBOR
         return response
 
-    # Method for handling GET requests
-    async def render_get(self, request):
-        if not self.content:
-            return aiocoap.Message(code=aiocoap.NOT_FOUND)
-        else:
-            return aiocoap.Message(payload=self.content)
-
-    # Method for handling DELETE requests
     async def render_delete(self, request):
-        # Remove this resource from the site
+        # Remove topic config resource from site
         self.site.remove_resource(self.path)
 
-        # Decode the bytes to a string and then convert it to a dictionary
-        content_dict = json.loads(self.content.decode("utf-8"))
+        # Remove associated topic-data resource
+        data_path = self.config.get("topic-data", "").split("/")
+        self.site.remove_resource(data_path)
 
-        # Remove the associated topic-data resource from the site
-        topic_data_path = content_dict["topic-data"].split("/")
-        self.site.remove_resource(topic_data_path)
-        # Update the CollectionResource
-        collection_resource = self.site._resources["ps",]
-        collection_resource.remove_resource("/".join(self.path))
+        # Update collection links
+        collection = self.site._resources.get(("ps",))
+        if collection:
+            collection.remove_link("/".join(self.path))
 
-        # Unsubscribe all subscribers by removing them from the list of observers
-        for observer in self._observations:
-            observer.deregister("Resource not found", aiocoap.NOT_FOUND)
+        # Notify topic config observers of deletion
+        for obs in list(self._observations):
+            obs.deregister("Topic deleted", aiocoap.NOT_FOUND)
 
-        # Return a 2.02 Deleted response
-        return aiocoap.Message(code=aiocoap.DELETED)
+        return Message(code=aiocoap.DELETED)
 
 
-# Define a resource class for topic data
+# ---------------------------------------------------------------------------
+# TopicDataResource  (/ps/data/<id>)
+# ---------------------------------------------------------------------------
+
 class TopicDataResource(resource.ObservableResource):
 
-    # Constructor method
-    def __init__(self):
+    def __init__(self, max_subscribers: int | None = None):
         super().__init__()
-        self.handle = None
-        self.content = b""
-
-        # Set the content type and resource type attributes
+        self._value: bytes | None = None   # None = HALF CREATED state
         self.rt = "core.ps.data"
+        self._max_subscribers = max_subscribers
 
-    # Method for setting content of the resource
-    def set_content(self, content):
-        self.content = content
+    @property
+    def is_fully_created(self) -> bool:
+        return self._value is not None
+
+    def set_content(self, content: bytes) -> None:
+        self._value = content
         self.updated_state()
 
-    # Method for handling PUT requests
-    async def render_put(self, request):
-        print("PUT payload: %s" % request.payload)
-        self.set_content(request.payload)
-        return aiocoap.Message(code=aiocoap.CHANGED, payload=self.content)
-
-    # Method for handling GET requests
     async def render_get(self, request):
-        if not self.content:
-            return aiocoap.Message(code=aiocoap.NOT_FOUND)
-        else:
-            return aiocoap.Message(payload=self.content)
+        if not self.is_fully_created:
+            return Message(code=aiocoap.NOT_FOUND)
+
+        # Enforce max-subscribers when client sends Observe=0 (subscribe)
+        if (
+            request.opt.observe == 0
+            and self._max_subscribers is not None
+            and len(self._observations) >= self._max_subscribers
+        ):
+            # Respond with 2.05 Content but NO Observe option — subscription rejected
+            return Message(code=aiocoap.CONTENT, payload=self._value)
+
+        return Message(payload=self._value)
+
+    async def render_put(self, request):
+        was_created = not self.is_fully_created
+        self.set_content(request.payload)
+        code = aiocoap.CREATED if was_created else aiocoap.CHANGED
+        return Message(code=code, payload=self._value)
+
+    async def render_delete(self, request):
+        """Revert topic to HALF CREATED state (draft-19 §5.4.3)."""
+        self._value = None
+        # Notify existing subscribers of the state change (they get 4.04)
+        for obs in list(self._observations):
+            obs.deregister("Topic data deleted", aiocoap.NOT_FOUND)
+        return Message(code=aiocoap.DELETED)
 
 
-# Configure logging levels for the application
+# ---------------------------------------------------------------------------
+# Server setup
+# ---------------------------------------------------------------------------
+
 logging.basicConfig(level=logging.INFO)
 logging.getLogger("coap-server").setLevel(logging.DEBUG)
 
 
-async def main():
-    # Create a resource tree for the CoAP server
+async def _run(host: str, port: int) -> None:
     root = resource.Site()
-
     root.add_resource(
-        [".well-known", "core"], resource.WKCResource(root.get_resources_as_linkheader)
+        [".well-known", "core"],
+        resource.WKCResource(root.get_resources_as_linkheader),
     )
     root.add_resource(["ps"], CollectionResource(root))
 
-    # Start the CoAP server
-    await aiocoap.Context.create_server_context(bind=("iot.dev", 5683), site=root)
-
-    # Run forever
+    await aiocoap.Context.create_server_context(bind=(host, port), site=root)
+    logging.info("CoAP pubsub broker listening on coap://%s:%d/ps", host, port)
     await asyncio.get_running_loop().create_future()
 
 
-# Run the application loop
+def main_cli() -> None:
+    parser = argparse.ArgumentParser(
+        description="CoAP Publish-Subscribe Broker (draft-ietf-core-coap-pubsub-19)",
+    )
+    parser.add_argument("--host", default="localhost", help="Bind host (default: localhost)")
+    parser.add_argument("--port", type=int, default=5683, help="Bind port (default: 5683)")
+    args = parser.parse_args()
+    asyncio.run(_run(args.host, args.port))
+
+
 if __name__ == "__main__":
-    asyncio.run(main())
+    main_cli()
