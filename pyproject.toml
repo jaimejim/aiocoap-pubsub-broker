@@ -18,9 +18,8 @@ dev = ["hupper>=1.12.1"]
 pubsub-broker = "broker:main_cli"
 pubsub-client = "client:main"
 
-[tool.setuptools.packages.find]
-where = ["."]
-include = ["broker*", "client*"]
+[tool.setuptools]
+py-modules = ["broker", "client"]
 
 [build-system]
 requires = ["setuptools>=68"]
