@@ -29,51 +29,12 @@ from contextlib import asynccontextmanager
 import aiocoap
 import cbor2
 
-# ---------------------------------------------------------------------------
-# Constants & codec
-# ---------------------------------------------------------------------------
-
-CT_PUBSUB_CBOR = 606
-CT_LINK_FORMAT = 40
-
-TOPIC_KEYS: dict[str, int] = {
-    "topic-name":           0,
-    "topic-data":           1,
-    "resource-type":        2,
-    "topic-content-format": 3,
-    "topic-type":           4,
-    "expiration-date":      5,
-    "max-subscribers":      6,
-    "observer-check":       7,
-    "initialize":           8,
-    "conf-filter":          10,
-}
-TOPIC_KEYS_REV: dict[int, str] = {v: k for k, v in TOPIC_KEYS.items()}
-
-
-def _encode(d: dict) -> bytes:
-    cbor_map = {}
-    for name, value in d.items():
-        if value is None:
-            continue
-        key = TOPIC_KEYS.get(name)
-        if key is None:
-            continue
-        if name == "expiration-date":
-            value = cbor2.CBORTag(1, int(value))
-        cbor_map[key] = value
-    return cbor2.dumps(cbor_map)
-
-
-def _decode(payload: bytes) -> dict:
-    raw = cbor2.loads(payload)
-    result = {}
-    for k, v in raw.items():
-        name = TOPIC_KEYS_REV.get(k, str(k))
-        if name == "expiration-date" and isinstance(v, cbor2.CBORTag) and v.tag == 1:
-            v = v.value
-        result[name] = v
-    return result
+from codec import (
+    TOPIC_KEYS, TOPIC_KEYS_REV,
+    CT_PUBSUB_CBOR, CT_LINK_FORMAT,
+    decode_topic_payload as _decode,
+    encode_topic_config as _encode,
+)
 
 
 def _pretty(d: dict) -> str:

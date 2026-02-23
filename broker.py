@@ -14,72 +14,12 @@ import aiocoap.resource as resource
 import cbor2
 from aiocoap import Message
 
-# ---------------------------------------------------------------------------
-# CBOR key mapping — draft-ietf-core-coap-pubsub-19 §5
-# ---------------------------------------------------------------------------
-
-TOPIC_KEYS: dict[str, int] = {
-    "topic-name":           0,
-    "topic-data":           1,
-    "resource-type":        2,
-    "topic-content-format": 3,
-    "topic-type":           4,
-    "expiration-date":      5,   # CBOR tag 1 (epoch-based, RFC 8949)
-    "max-subscribers":      6,
-    "observer-check":       7,
-    "initialize":           8,   # bstr — pre-populates topic-data on creation
-    "conf-filter":          10,  # array of uint keys, used in FETCH requests
-}
-TOPIC_KEYS_REV: dict[int, str] = {v: k for k, v in TOPIC_KEYS.items()}
-
-# application/core-pubsub+cbor — TBD606 (placeholder until IANA assigns)
-CT_PUBSUB_CBOR = 606
-CT_JSON = 50  # application/json
-CT_LINK_FORMAT = 40  # application/link-format
-
-IMMUTABLE_FIELDS = {"topic-name", "topic-data", "resource-type"}
-
-
-# ---------------------------------------------------------------------------
-# Codec helpers
-# ---------------------------------------------------------------------------
-
-def decode_topic_payload(payload: bytes, content_format: int | None) -> dict:
-    """Parse a topic configuration payload.
-
-    Accepts:
-    - application/core-pubsub+cbor (CT_PUBSUB_CBOR): CBOR with numeric keys
-    - application/json (CT_JSON) or unknown: JSON with string keys (fallback)
-
-    Always returns a Python dict with *string* keys for internal use.
-    """
-    if content_format == CT_PUBSUB_CBOR:
-        raw = cbor2.loads(payload)
-        result = {}
-        for k, v in raw.items():
-            name = TOPIC_KEYS_REV.get(k, str(k))
-            if name == "expiration-date" and isinstance(v, cbor2.CBORTag) and v.tag == 1:
-                v = v.value
-            result[name] = v
-        return result
-    else:
-        import json
-        return json.loads(payload)
-
-
-def encode_topic_config(d: dict) -> bytes:
-    """Encode a topic configuration dict to CBOR with numeric keys."""
-    cbor_map = {}
-    for name, value in d.items():
-        if value is None:
-            continue
-        key = TOPIC_KEYS.get(name)
-        if key is None:
-            continue
-        if name == "expiration-date":
-            value = cbor2.CBORTag(1, int(value))
-        cbor_map[key] = value
-    return cbor2.dumps(cbor_map)
+from codec import (
+    TOPIC_KEYS, TOPIC_KEYS_REV,
+    CT_PUBSUB_CBOR, CT_LINK_FORMAT,
+    IMMUTABLE_FIELDS,
+    decode_topic_payload, encode_topic_config,
+)
 
 
 # ---------------------------------------------------------------------------

@@ -19,7 +19,7 @@ pubsub-broker = "broker:main_cli"
 pubsub-client = "client:main"
 
 [tool.setuptools]
-py-modules = ["broker", "client"]
+py-modules = ["broker", "client", "codec"]
 
 [build-system]
 requires = ["setuptools>=68"]
