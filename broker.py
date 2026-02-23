@@ -289,9 +289,14 @@ class TopicDataResource(resource.ObservableResource):
 
     async def render_put(self, request):
         was_created = not self.is_fully_created
+        if request.opt.content_format is not None:
+            self._content_format = request.opt.content_format
         self.set_content(request.payload)
         code = aiocoap.CREATED if was_created else aiocoap.CHANGED
-        return Message(code=code, payload=self._value)
+        resp = Message(code=code, payload=self._value)
+        if self._content_format is not None:
+            resp.opt.content_format = self._content_format
+        return resp
 
     async def render_delete(self, request):
         """Revert topic to HALF CREATED state (draft-19 §5.4.3)."""
