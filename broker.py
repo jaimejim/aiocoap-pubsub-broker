@@ -239,7 +239,7 @@ class TopicResource(resource.ObservableResource):
 
         # Notify topic config observers of deletion
         for obs in list(self._observations):
-            obs.deregister("Topic deleted", aiocoap.NOT_FOUND)
+            obs.trigger(Message(code=aiocoap.NOT_FOUND, payload=b"Topic deleted"), is_last=True)
 
         return Message(code=aiocoap.DELETED)
 
@@ -290,7 +290,7 @@ class TopicDataResource(resource.ObservableResource):
         self._value = None
         # Notify existing subscribers of the state change (they get 4.04)
         for obs in list(self._observations):
-            obs.deregister("Topic data deleted", aiocoap.NOT_FOUND)
+            obs.trigger(Message(code=aiocoap.NOT_FOUND, payload=b"Topic data deleted"), is_last=True)
         return Message(code=aiocoap.DELETED)
 
 
