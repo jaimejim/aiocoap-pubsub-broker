@@ -82,6 +82,7 @@ class CollectionResource(resource.Resource):
 
         topic_data_res = TopicDataResource(
             max_subscribers=config.get("max-subscribers"),
+            content_format=config.get("topic-content-format"),
         )
 
         # Handle `initialize` — pre-populate topic-data (§5.2.1)
@@ -250,11 +251,12 @@ class TopicResource(resource.ObservableResource):
 
 class TopicDataResource(resource.ObservableResource):
 
-    def __init__(self, max_subscribers: int | None = None):
+    def __init__(self, max_subscribers: int | None = None, content_format: int | None = None):
         super().__init__()
         self._value: bytes | None = None   # None = HALF CREATED state
         self.rt = "core.ps.data"
         self._max_subscribers = max_subscribers
+        self._content_format = content_format
 
     @property
     def is_fully_created(self) -> bool:
@@ -275,9 +277,15 @@ class TopicDataResource(resource.ObservableResource):
             and len(self._observations) >= self._max_subscribers
         ):
             # Respond with 2.05 Content but NO Observe option — subscription rejected
-            return Message(code=aiocoap.CONTENT, payload=self._value)
+            resp = Message(code=aiocoap.CONTENT, payload=self._value)
+            if self._content_format is not None:
+                resp.opt.content_format = self._content_format
+            return resp
 
-        return Message(payload=self._value)
+        resp = Message(payload=self._value)
+        if self._content_format is not None:
+            resp.opt.content_format = self._content_format
+        return resp
 
     async def render_put(self, request):
         was_created = not self.is_fully_created
